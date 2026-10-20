@@ -1,6 +1,6 @@
 // 本文件负责书架卡片、筛选项和阅读看板的安全渲染，不直接访问数据源。
-import { READING_STATUSES, escapeHtml, formatDate, normalizeTags, statusLabel } from "./utils.js?v=10";
-import { getLocale, sourceLabel, t } from "./i18n.js?v=10";
+import { READING_STATUSES, escapeHtml, formatDate, normalizeTags, statusLabel } from "./utils.js?v=11";
+import { getLocale, sourceLabel, t } from "./i18n.js?v=11";
 
 // 仅允许 http 和 https 封面地址进入页面属性。
 function safeImageUrl(value) {

@@ -1,6 +1,6 @@
 // 本文件封装 Supabase 邮箱验证码登录和个人书架的数据访问。
-import { CONFIG, normalizeBook, normalizeStatus } from "./utils.js?v=10";
-import { t } from "./i18n.js?v=10";
+import { CONFIG, normalizeBook, normalizeStatus } from "./utils.js?v=11";
+import { t } from "./i18n.js?v=11";
 
 const AUTH_STORAGE_KEY = "isbn-bookshelf-auth";
 const SUPABASE_MODULE_URLS = [

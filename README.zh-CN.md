@@ -1,4 +1,4 @@
-# 扫书架 ISBN Bookshelf
+# 书迹 ISBN Bookshelf
 
 [English](README.md) | [中文](README.zh-CN.md)
 

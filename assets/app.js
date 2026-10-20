@@ -1,13 +1,13 @@
 // 本文件协调扫码、查书、登录、存储、书架筛选、阅读看板和导出交互。
-import { lookupBookByIsbn } from "./book-lookup.js?v=10";
-import { exportBooks } from "./csv-export.js?v=10";
-import { DemoStore } from "./demo-store.js?v=10";
-import { applyTranslations, sourceLabel, t, toggleLanguage } from "./i18n.js?v=10";
-import { LocalStore } from "./local-store.js?v=10";
-import { CameraScanner } from "./scanner.js?v=10";
-import { SupabaseStore } from "./supabase-store.js?v=10";
-import { fillBookForm, renderBoard, renderCoverPreview, renderShelf, renderTagFilters } from "./ui.js?v=10";
-import { hasCloudConfig, isValidIsbn, normalizeBook, normalizeIsbn, normalizeTags } from "./utils.js?v=10";
+import { lookupBookByIsbn } from "./book-lookup.js?v=11";
+import { exportBooks } from "./csv-export.js?v=11";
+import { DemoStore } from "./demo-store.js?v=11";
+import { applyTranslations, sourceLabel, t, toggleLanguage } from "./i18n.js?v=11";
+import { LocalStore } from "./local-store.js?v=11";
+import { CameraScanner } from "./scanner.js?v=11";
+import { SupabaseStore } from "./supabase-store.js?v=11";
+import { fillBookForm, renderBoard, renderCoverPreview, renderShelf, renderTagFilters } from "./ui.js?v=11";
+import { hasCloudConfig, isValidIsbn, normalizeBook, normalizeIsbn, normalizeTags } from "./utils.js?v=11";
 
 const $ = (selector) => document.querySelector(selector);
 const elements = {

@@ -1,6 +1,6 @@
 // 本文件封装 ISBN 查书，优先使用配置的 Supabase 函数，再尝试公开图书接口。
-import { CONFIG, normalizeBook, normalizeIsbn } from "./utils.js?v=10";
-import { getVerifiedBookByIsbn } from "./verified-books.js?v=10";
+import { CONFIG, normalizeBook, normalizeIsbn } from "./utils.js?v=11";
+import { getVerifiedBookByIsbn } from "./verified-books.js?v=11";
 
 // 为外部请求设置超时，避免移动网络下长时间停留在加载状态。
 async function fetchWithTimeout(url, options = {}, timeoutMs = 7000) {

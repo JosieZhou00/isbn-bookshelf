@@ -1,5 +1,5 @@
 // 本文件提供 ISBN 校验、标签整理、日期格式化和安全输出等通用函数。
-import { getLocale, t } from "./i18n.js?v=10";
+import { getLocale, t } from "./i18n.js?v=11";
 
 export const CONFIG = typeof window === "undefined" ? {} : (window.ISBN_BOOKSHELF_CONFIG || {});
 

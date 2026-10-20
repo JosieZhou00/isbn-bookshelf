@@ -2,6 +2,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { LocalStore } from "../assets/local-store.js";
+import { DemoStore } from "../assets/demo-store.js";
 import { rowsToCsv } from "../assets/csv-export.js";
 import { createManualLookupResult, normalizeNeoDbBook, selectExactNeoDbItem } from "../assets/book-lookup.js";
 import { getVerifiedBookByIsbn } from "../assets/verified-books.js";
@@ -81,6 +82,16 @@ test("本机书架保存和状态切换", async () => {
   assert.equal((await store.listBooks())[0].title, "修订版");
   await store.updateStatus(first.id, "read");
   assert.equal((await store.listBooks())[0].reading_status, "read");
+});
+
+// 验证公开演示书架包含两本授权展示书籍且不会依赖 localStorage。
+test("演示书架使用两本内存数据", async () => {
+  const store = new DemoStore();
+  const books = await store.listBooks();
+  assert.equal(books.length, 2);
+  assert.deepEqual(books.map((book) => book.isbn).sort(), ["9787522208183", "9787574002067"]);
+  await store.updateStatus(books[0].id, "reading");
+  assert.equal((await store.listBooks()).find((book) => book.id === books[0].id).reading_status, "reading");
 });
 
 // 验证 CSV 对逗号、引号和换行的转义。

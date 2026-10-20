@@ -1,6 +1,7 @@
 // 本文件协调扫码、查书、登录、存储、书架筛选、阅读看板和导出交互。
-import { lookupBookByIsbn } from "./book-lookup.js?v=7";
+import { lookupBookByIsbn } from "./book-lookup.js?v=8";
 import { exportBooks } from "./csv-export.js";
+import { DemoStore } from "./demo-store.js";
 import { LocalStore } from "./local-store.js";
 import { CameraScanner } from "./scanner.js";
 import { SupabaseStore } from "./supabase-store.js";
@@ -28,7 +29,8 @@ const bookFields = {
   source: $("#sourceBadge"), coverPreview: $("#coverPreview")
 };
 
-const state = { books: [], store: new LocalStore(), localStore: null, cloudStore: null, lookupBook: null, toastTimer: null };
+const demoMode = new URLSearchParams(location.search).get("demo") === "1";
+const state = { books: [], store: new LocalStore(), localStore: null, cloudStore: null, demoStore: null, lookupBook: null, toastTimer: null };
 state.localStore = state.store;
 
 const scanner = new CameraScanner({
@@ -91,13 +93,14 @@ function renderCurrentBoard() {
 // 刷新登录按钮、模式说明和账号弹窗内容。
 function renderAccountState() {
   const session = state.cloudStore?.session;
+  const demo = state.store.mode === "demo";
   const cloud = state.store.mode === "cloud" && session;
-  elements.modeBadge.textContent = cloud ? "云端书架" : "本机书架";
-  elements.authButton.textContent = cloud ? "账号" : "邮箱登录";
+  elements.modeBadge.textContent = demo ? "演示书架" : cloud ? "云端书架" : "本机书架";
+  elements.authButton.textContent = demo ? "退出演示" : cloud ? "账号" : "邮箱登录";
   elements.signedOutPanel.classList.toggle("hidden", Boolean(session));
   elements.signedInPanel.classList.toggle("hidden", !session);
   elements.accountEmail.textContent = session ? `当前账号：${session.user.email}` : "";
-  elements.storageNote.textContent = cloud ? "云端数据与当前邮箱账号绑定，导出文件仍会保存在你选择的位置。" : "本机模式的数据只保存在当前浏览器中，请定期导出备份。";
+  elements.storageNote.textContent = demo ? "演示数据只存在于当前页面会话，不会写入你的个人书架。" : cloud ? "云端数据与当前邮箱账号绑定，导出文件仍会保存在你选择的位置。" : "本机模式的数据只保存在当前浏览器中，请定期导出备份。";
 }
 
 // 查询 ISBN 并展开资料确认表单。
@@ -248,6 +251,13 @@ function bindEvents() {
   elements.deleteBookButton.addEventListener("click", () => handleDeleteBook().catch(showError));
   elements.exportButton.addEventListener("click", () => exportBooks(state.books).then(({ result }) => toast(result)).catch(showError));
   elements.authButton.addEventListener("click", () => {
+    if (state.store.mode === "demo") {
+      const url = new URL(location.href);
+      url.searchParams.delete("demo");
+      url.hash = "";
+      location.href = url.toString();
+      return;
+    }
     if (!hasCloudConfig()) return toast("云端功能尚未配置，当前可以继续使用本机书架。");
     renderAccountState();
     elements.authDialog.showModal();
@@ -264,7 +274,11 @@ function bindEvents() {
 async function init() {
   bindEvents();
   await state.localStore.init();
-  if (hasCloudConfig()) {
+  if (demoMode) {
+    state.demoStore = new DemoStore();
+    await state.demoStore.init();
+    state.store = state.demoStore;
+  } else if (hasCloudConfig()) {
     state.cloudStore = new SupabaseStore();
     await state.cloudStore.init();
     if (state.cloudStore.session) state.store = state.cloudStore;

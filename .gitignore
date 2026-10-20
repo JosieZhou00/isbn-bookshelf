@@ -4,5 +4,6 @@
 assets/config.js
 node_modules/
 output/
+dist/
 supabase/.branches/
 supabase/.temp/

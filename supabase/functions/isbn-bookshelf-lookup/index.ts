@@ -73,7 +73,7 @@ async function lookupNeoDb(isbn: string): Promise<BookPayload | null> {
   if (!response.ok) return null;
   const result = await response.json();
   const items = Array.isArray(result?.data) ? result.data as Array<Record<string, unknown>> : [];
-  const item = items.find((entry) => normalizeIsbn(String(entry.isbn || "")) === isbn) || items[0];
+  const item = items.find((entry) => normalizeIsbn(String(entry.isbn || "")) === isbn);
   if (!item?.title && !item?.display_title) return null;
   const title = String(item.display_title || item.title || "").trim();
   const subtitle = String(item.subtitle || "").trim();
@@ -123,7 +123,7 @@ async function lookupDoubanWeb(isbn: string): Promise<BookPayload | null> {
   if (!response.ok) return null;
   const data = parseDoubanSearchData(await response.text());
   const items = Array.isArray(data?.items) ? data.items as Array<Record<string, unknown>> : [];
-  const item = items.find((entry) => String(entry.url || "").includes("book.douban.com/subject/")) || items[0];
+  const item = items.find((entry) => normalizeIsbn(String(entry.isbn || "")) === isbn);
   if (!item?.title) return null;
   const meta = parseDoubanAbstract(String(item.abstract || ""));
   return {

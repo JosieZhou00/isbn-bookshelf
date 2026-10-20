@@ -1,5 +1,6 @@
 // 本文件封装 ISBN 查书，优先使用配置的 Supabase 函数，再尝试公开图书接口。
 import { CONFIG, normalizeBook, normalizeIsbn } from "./utils.js";
+import { getVerifiedBookByIsbn } from "./verified-books.js";
 
 // 为外部请求设置超时，避免移动网络下长时间停留在加载状态。
 async function fetchWithTimeout(url, options = {}, timeoutMs = 7000) {
@@ -63,8 +64,13 @@ async function lookupNeoDb(isbn) {
   if (!response.ok) return null;
   const result = await response.json();
   const items = Array.isArray(result?.data) ? result.data : [];
-  const item = items.find((entry) => normalizeIsbn(entry.isbn) === isbn) || items[0];
+  const item = selectExactNeoDbItem(isbn, items);
   return normalizeNeoDbBook(isbn, item);
+}
+
+// 只接受 ISBN 完全一致的 NeoDB 结果，避免把相似号码的第一条结果当作目标书籍。
+export function selectExactNeoDbItem(isbn, items = []) {
+  return items.find((entry) => normalizeIsbn(entry.isbn) === normalizeIsbn(isbn)) || null;
 }
 
 // 直接查询 Google Books，作为未配置 Supabase 时的零成本后备来源。
@@ -105,6 +111,8 @@ async function lookupOpenLibrary(isbn) {
 export async function lookupBookByIsbn(rawIsbn, accessToken = "") {
   const isbn = normalizeIsbn(rawIsbn);
   const errors = [];
+  const verifiedBook = getVerifiedBookByIsbn(isbn);
+  if (verifiedBook) return verifiedBook;
   for (const lookup of [(value) => lookupByBackend(value, accessToken), lookupNeoDb, lookupGoogleBooks, lookupOpenLibrary]) {
     try {
       const book = await lookup(isbn);

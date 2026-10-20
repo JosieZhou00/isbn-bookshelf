@@ -1,14 +1,15 @@
 // 本文件缓存应用外壳，使已打开过的书架在弱网环境下仍可访问本地数据。
-const CACHE_NAME = "isbn-bookshelf-v3";
+const CACHE_NAME = "isbn-bookshelf-v5";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./assets/styles.css",
-  "./assets/app.js",
+  "./assets/app.js?v=5",
   "./assets/ui.js",
   "./assets/utils.js",
   "./assets/scanner.js",
-  "./assets/book-lookup.js",
+  "./assets/book-lookup.js?v=5",
+  "./assets/verified-books.js",
   "./assets/local-store.js",
   "./assets/supabase-store.js",
   "./assets/csv-export.js",
@@ -28,12 +29,13 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
-// 导航请求优先联网，静态资源优先使用缓存。
+// 所有同源资源优先联网并更新缓存，断网时再使用已有缓存。
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
-  if (event.request.mode === "navigate") {
-    event.respondWith(fetch(event.request).catch(() => caches.match("./index.html")));
-    return;
-  }
-  event.respondWith(caches.match(event.request).then((cached) => cached || fetch(event.request)));
+  const requestUrl = new URL(event.request.url);
+  if (requestUrl.origin !== self.location.origin) return;
+  event.respondWith(fetch(event.request).then((response) => {
+    if (response.ok) caches.open(CACHE_NAME).then((cache) => cache.put(event.request, response.clone()));
+    return response;
+  }).catch(() => caches.match(event.request).then((cached) => cached || (event.request.mode === "navigate" ? caches.match("./index.html") : Response.error()))));
 });

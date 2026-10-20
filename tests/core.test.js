@@ -3,7 +3,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { LocalStore } from "../assets/local-store.js";
 import { rowsToCsv } from "../assets/csv-export.js";
-import { normalizeNeoDbBook } from "../assets/book-lookup.js";
+import { normalizeNeoDbBook, selectExactNeoDbItem } from "../assets/book-lookup.js";
+import { getVerifiedBookByIsbn } from "../assets/verified-books.js";
 import { isValidIsbn, normalizeIsbn, normalizeTags } from "../assets/utils.js";
 
 class MemoryStorage {
@@ -38,6 +39,20 @@ test("NeoDB 中文书目字段映射", () => {
   assert.equal(book.publisher, "华夏出版社");
   assert.equal(book.published_date, "2025");
   assert.equal(book.source, "NeoDB 中文书目");
+});
+
+// 验证 NeoDB 模糊搜索不会把相近 ISBN 的第一本误认为目标书籍。
+test("NeoDB 只接受精确 ISBN", () => {
+  const items = [{ isbn: "9787522206943", title: "卢琴德" }];
+  assert.equal(selectExactNeoDbItem("9787522206042", items), null);
+});
+
+// 验证经出版社官网核验的纠错记录优先返回正确书目。
+test("已核验 ISBN 纠错", () => {
+  const book = getVerifiedBookByIsbn("978-7-5222-0604-2");
+  assert.equal(book.title, "你好，我是阿斯伯格女孩");
+  assert.deepEqual(book.authors, ["露迪·西蒙"]);
+  assert.equal(book.publisher, "华夏出版社");
 });
 
 // 验证标签去空白和不区分大小写去重。

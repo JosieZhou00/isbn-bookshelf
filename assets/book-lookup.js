@@ -33,7 +33,8 @@ async function lookupByBackend(isbn, accessToken = "") {
   const response = await fetchWithTimeout(endpoint, { headers });
   if (!response.ok) throw new Error(`云端查书返回 ${response.status}`);
   const result = await response.json();
-  return result.found ? normalizeBook({ ...result.book, source: result.source }) : null;
+  if (!result.found || normalizeIsbn(result.book?.isbn) !== isbn) return null;
+  return normalizeBook({ ...result.book, source: result.source });
 }
 
 // 去掉作者名前容易出错的国籍前缀，保留可检索的人名主体。
@@ -61,7 +62,7 @@ export function normalizeNeoDbBook(isbn, item = {}) {
 async function lookupNeoDb(isbn) {
   const params = new URLSearchParams({ category: "book", query: isbn });
   const response = await fetchWithTimeout(`https://neodb.social/api/catalog/search?${params}`);
-  if (!response.ok) return null;
+  if (!response.ok) throw new Error(`NeoDB 返回 ${response.status}`);
   const result = await response.json();
   const items = Array.isArray(result?.data) ? result.data : [];
   const item = selectExactNeoDbItem(isbn, items);
@@ -76,8 +77,9 @@ export function selectExactNeoDbItem(isbn, items = []) {
 // 直接查询 Google Books，作为未配置 Supabase 时的零成本后备来源。
 async function lookupGoogleBooks(isbn) {
   const response = await fetchWithTimeout(`https://www.googleapis.com/books/v1/volumes?q=isbn:${encodeURIComponent(isbn)}`);
-  if (!response.ok) return null;
-  const volume = (await response.json()).items?.[0]?.volumeInfo;
+  if (!response.ok) throw new Error(`Google Books 返回 ${response.status}`);
+  const items = (await response.json()).items || [];
+  const volume = items.map((item) => item.volumeInfo).find((item) => item?.industryIdentifiers?.some((identifier) => normalizeIsbn(identifier.identifier) === isbn));
   if (!volume?.title) return null;
   return normalizeBook({
     isbn,
@@ -90,10 +92,20 @@ async function lookupGoogleBooks(isbn) {
   });
 }
 
+// 生成可继续手动填写的查询结果，并区分“未收录”和“全部来源不可用”。
+export function createManualLookupResult(isbn, unavailableSources = [], sourceCount = 0) {
+  return {
+    ...normalizeBook({ isbn, source: "手动录入" }),
+    lookup_status: sourceCount > 0 && unavailableSources.length === sourceCount ? "source-error" : "not-found",
+    unavailable_sources: unavailableSources
+  };
+}
+
 // 直接查询 Open Library，补充 Google Books 未覆盖的 ISBN。
 async function lookupOpenLibrary(isbn) {
   const response = await fetchWithTimeout(`https://openlibrary.org/isbn/${encodeURIComponent(isbn)}.json`);
-  if (!response.ok) return null;
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`Open Library 返回 ${response.status}`);
   const data = await response.json();
   if (!data.title) return null;
   return normalizeBook({
@@ -110,17 +122,24 @@ async function lookupOpenLibrary(isbn) {
 // 按优先级查询各数据源，失败时返回可继续手动填写的书籍骨架。
 export async function lookupBookByIsbn(rawIsbn, accessToken = "") {
   const isbn = normalizeIsbn(rawIsbn);
-  const errors = [];
+  const unavailableSources = [];
   const verifiedBook = getVerifiedBookByIsbn(isbn);
   if (verifiedBook) return verifiedBook;
-  for (const lookup of [(value) => lookupByBackend(value, accessToken), lookupNeoDb, lookupGoogleBooks, lookupOpenLibrary]) {
+  const sources = [
+    ["NeoDB 中文书目", lookupNeoDb],
+    ["Google Books", lookupGoogleBooks],
+    ["Open Library", lookupOpenLibrary]
+  ];
+  const backend = getLookupBackendConfig();
+  if (backend.url && backend.key) sources.unshift(["云端中文书目", (value) => lookupByBackend(value, accessToken)]);
+  for (const [source, lookup] of sources) {
     try {
       const book = await lookup(isbn);
       if (book?.title) return book;
     } catch (error) {
-      errors.push(error.name === "AbortError" ? "查询超时" : error.message);
+      unavailableSources.push(source);
+      console.warn(`${source} 查询失败`, error);
     }
   }
-  const lookupStatus = errors.length ? "source-error" : "not-found";
-  return { ...normalizeBook({ isbn, source: "手动录入" }), lookup_status: lookupStatus, errors };
+  return createManualLookupResult(isbn, unavailableSources, sources.length);
 }

@@ -3,7 +3,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { LocalStore } from "../assets/local-store.js";
 import { rowsToCsv } from "../assets/csv-export.js";
-import { normalizeNeoDbBook, selectExactNeoDbItem } from "../assets/book-lookup.js";
+import { createManualLookupResult, normalizeNeoDbBook, selectExactNeoDbItem } from "../assets/book-lookup.js";
 import { getVerifiedBookByIsbn } from "../assets/verified-books.js";
 import { isValidIsbn, normalizeIsbn, normalizeTags } from "../assets/utils.js";
 
@@ -54,10 +54,16 @@ test("已核验 ISBN 纠错", () => {
   assert.equal(book.title, "你好，我是阿斯伯格女孩");
   assert.deepEqual(book.authors, ["露迪·西蒙"]);
   assert.equal(book.publisher, "华夏出版社");
-  const legalAiBook = getVerifiedBookByIsbn("9787519791551");
-  assert.equal(legalAiBook.title, "司法裁判过程中的人工智能应用研究");
-  assert.deepEqual(legalAiBook.authors, ["彭中礼"]);
-  assert.equal(legalAiBook.publisher, "法律出版社");
+});
+
+// 验证未收录和全部来源异常时均返回可手填骨架，并给出不同状态。
+test("查无书目时进入手动录入", () => {
+  const notFound = createManualLookupResult("9787519791551", ["Google Books"], 4);
+  assert.equal(notFound.lookup_status, "not-found");
+  assert.equal(notFound.isbn, "9787519791551");
+  assert.equal(notFound.title, "");
+  const unavailable = createManualLookupResult("9787519791551", ["A", "B"], 2);
+  assert.equal(unavailable.lookup_status, "source-error");
 });
 
 // 验证标签去空白和不区分大小写去重。

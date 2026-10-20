@@ -1,5 +1,5 @@
 // 本文件协调扫码、查书、登录、存储、书架筛选、阅读看板和导出交互。
-import { lookupBookByIsbn } from "./book-lookup.js?v=6";
+import { lookupBookByIsbn } from "./book-lookup.js?v=7";
 import { exportBooks } from "./csv-export.js";
 import { LocalStore } from "./local-store.js";
 import { CameraScanner } from "./scanner.js";
@@ -112,8 +112,9 @@ async function handleLookup() {
   fillBookForm(book, bookFields);
   elements.bookForm.classList.remove("hidden");
   if (book.title) elements.lookupHint.textContent = `已从${book.source || "书架"}取得资料，请确认后保存。`;
-  else if (book.lookup_status === "source-error") elements.lookupHint.textContent = `部分查书来源暂时不可用；请稍后重试或手动填写。${book.errors?.[0] ? `（${book.errors[0]}）` : ""}`;
-  else elements.lookupHint.textContent = "已查询可用数据源，但没有找到完整资料；请手动填写书名后保存。";
+  else if (book.lookup_status === "source-error") elements.lookupHint.textContent = "查书服务暂时全部不可用；已保留 ISBN，请稍后重试或手动填写书名后保存。";
+  else if (book.unavailable_sources?.length) elements.lookupHint.textContent = "未找到可核验的精确书目，且部分来源暂时不可用；已保留 ISBN，请手动填写书名后保存。";
+  else elements.lookupHint.textContent = "已查询全部可用来源，但没有找到可核验的精确书目；已保留 ISBN，请手动填写书名后保存。";
   bookFields.title.focus();
 }
 

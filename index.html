@@ -9,10 +9,16 @@
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./assets/icon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="./assets/styles.css" />
+    <script>document.documentElement.classList.toggle("file-mode", location.protocol === "file:");</script>
     <script src="./assets/config.js"></script>
     <script type="module" src="./assets/app.js"></script>
   </head>
   <body>
+    <aside class="file-warning" role="alert">
+      当前打开的是本地文件，浏览器会拦截查书模块。请改用
+      <a href="http://127.0.0.1:5174/">http://127.0.0.1:5174/</a>
+      访问。
+    </aside>
     <header class="site-header">
       <a class="brand" href="#add" aria-label="返回添加图书">
         <span class="brand-mark" aria-hidden="true">书</span>

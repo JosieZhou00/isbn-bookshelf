@@ -38,6 +38,7 @@ h1, h2 { letter-spacing: -0.025em; }
 .brand strong, .brand small { display: block; }
 .brand small { margin-top: 0.14rem; color: var(--muted); font-size: 0.65rem; letter-spacing: 0.12em; }
 .account-area { display: flex; align-items: center; gap: 0.6rem; }
+.language-button { min-width: 76px; }
 .mode-badge, .source-badge { display: inline-flex; padding: 0.38rem 0.65rem; border-radius: 999px; background: var(--green-soft); color: var(--green); font-size: 0.78rem; font-weight: 700; }
 
 main { width: min(1180px, calc(100% - 2rem)); margin: 0 auto 5rem; }
@@ -149,6 +150,8 @@ dialog::backdrop { background: rgba(18, 35, 30, 0.62); backdrop-filter: blur(4px
 
 @media (max-width: 440px) {
   .brand small { display: none; }
+  .account-area { gap: 0.35rem; }
+  .language-button, #authButton { padding-inline: 0.65rem; }
   .hero { grid-template-columns: 1fr; }
   .hero-count { display: flex; align-items: baseline; justify-content: flex-start; gap: 0.5rem; }
   .hero-count strong { font-size: 2.8rem; }

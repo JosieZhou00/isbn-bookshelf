@@ -1,32 +1,33 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#23483e" />
-    <meta name="description" content="手机扫描 ISBN，建立想读、在读和已读书架。可免注册保存在本机，也可用邮箱同步。" />
-    <title>扫书架</title>
+    <meta name="description" content="Scan an ISBN to build a Want to Read, Reading, and Read bookshelf. Save locally without an account or optionally sync by email." />
+    <title>ISBN Bookshelf</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./assets/icon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="./assets/styles.css" />
     <script>document.documentElement.classList.toggle("file-mode", location.protocol === "file:");</script>
     <script src="./assets/config.js"></script>
-    <script type="module" src="./assets/app.js?v=8"></script>
+    <script type="module" src="./assets/app.js?v=9"></script>
   </head>
   <body>
     <aside class="file-warning" role="alert">
-      当前打开的是本地文件，浏览器会拦截查书模块。请改用
+      <span data-i18n="file.before">This page was opened as a local file, so the browser will block book lookup modules. Open</span>
       <a href="http://127.0.0.1:5174/">http://127.0.0.1:5174/</a>
-      访问。
+      <span data-i18n="file.after">instead.</span>
     </aside>
     <header class="site-header">
-      <a class="brand" href="#add" aria-label="返回添加图书">
-        <span class="brand-mark" aria-hidden="true">书</span>
-        <span><strong>扫书架</strong><small>ISBN Bookshelf</small></span>
+      <a class="brand" href="#add" aria-label="Return to Add book" data-i18n-aria-label="brand.home">
+        <span class="brand-mark" aria-hidden="true" data-i18n="brand.mark">B</span>
+        <span><strong data-i18n="brand.name">ISBN Bookshelf</strong><small data-i18n="brand.subtitle">Scan · Save · Read</small></span>
       </a>
       <div class="account-area">
-        <span class="mode-badge" id="modeBadge">本机书架</span>
-        <button class="ghost-button" id="authButton" type="button">邮箱登录</button>
+        <button class="ghost-button language-button" id="languageButton" type="button" aria-label="Switch to Chinese" data-i18n="language.switch" data-i18n-aria-label="language.switchLabel">中文</button>
+        <span class="mode-badge" id="modeBadge">Local shelf</span>
+        <button class="ghost-button" id="authButton" type="button">Email sign in</button>
       </div>
     </header>
 
@@ -34,89 +35,89 @@
       <section class="hero">
         <div>
           <p class="eyebrow">SCAN · SAVE · READ</p>
-          <h1>扫一下，把书放进自己的书架。</h1>
-          <p>无需注册即可保存在当前浏览器；邮箱登录后，可在不同设备同步。</p>
+          <h1 data-i18n="hero.title">Scan a book. Make it yours.</h1>
+          <p data-i18n="hero.subtitle">Save books in this browser without an account, or sign in by email to sync across devices.</p>
         </div>
         <div class="hero-count" aria-live="polite">
           <strong id="totalCount">0</strong>
-          <span>本藏书</span>
+          <span data-i18n="hero.count">books</span>
         </div>
       </section>
 
-      <nav class="main-nav" aria-label="主要功能">
-        <button class="nav-button active" data-view="add" type="button">添加</button>
-        <button class="nav-button" data-view="shelf" type="button">书架</button>
-        <button class="nav-button" data-view="board" type="button">看板</button>
-        <button class="nav-button" data-view="export" type="button">导出</button>
+      <nav class="main-nav" aria-label="Main features" data-i18n-aria-label="nav.label">
+        <button class="nav-button active" data-view="add" type="button" data-i18n="nav.add">Add</button>
+        <button class="nav-button" data-view="shelf" type="button" data-i18n="nav.shelf">Shelf</button>
+        <button class="nav-button" data-view="board" type="button" data-i18n="nav.board">Board</button>
+        <button class="nav-button" data-view="export" type="button" data-i18n="nav.export">Export</button>
       </nav>
 
       <section class="view active" id="add" aria-labelledby="addTitle">
         <div class="panel lookup-panel">
           <div class="section-heading">
-            <div><p class="step">01</p><h2 id="addTitle">扫描或输入 ISBN</h2></div>
-            <button class="camera-button" id="cameraButton" type="button">打开相机</button>
+            <div><p class="step">01</p><h2 id="addTitle" data-i18n="add.title">Scan or enter an ISBN</h2></div>
+            <button class="camera-button" id="cameraButton" type="button" data-i18n="add.openCamera">Open camera</button>
           </div>
           <form class="isbn-form" id="isbnForm">
             <label class="sr-only" for="isbnInput">ISBN</label>
-            <input id="isbnInput" inputmode="numeric" autocomplete="off" placeholder="例如 9787505756854" required />
-            <button class="primary-button" type="submit">检索图书</button>
+            <input id="isbnInput" inputmode="numeric" autocomplete="off" placeholder="e.g. 9787505756854" data-i18n-placeholder="add.isbnPlaceholder" required />
+            <button class="primary-button" type="submit" data-i18n="add.lookup">Look up book</button>
           </form>
-          <p class="hint" id="lookupHint">支持 ISBN-10 和 ISBN-13，空格和连字符会自动清理。</p>
+          <p class="hint" id="lookupHint" data-i18n="lookup.idle">ISBN-10 and ISBN-13 are supported. Spaces and hyphens are removed automatically.</p>
         </div>
 
         <form class="panel book-form hidden" id="bookForm">
           <div class="section-heading compact">
-            <div><p class="step">02</p><h2>确认图书资料</h2></div>
-            <span class="source-badge" id="sourceBadge">手动录入</span>
+            <div><p class="step">02</p><h2 data-i18n="book.confirm">Review book details</h2></div>
+            <span class="source-badge" id="sourceBadge">Manual entry</span>
           </div>
           <div class="book-editor">
-            <div class="cover-preview" id="coverPreview"><span>暂无封面</span></div>
+            <div class="cover-preview" id="coverPreview"><span data-i18n="book.noCover">No cover</span></div>
             <div class="form-grid">
-              <label>书名<input id="bookTitle" name="title" required /></label>
-              <label>ISBN<input id="bookIsbn" name="isbn" readonly required /></label>
-              <label>作者<input id="bookAuthors" name="authors" placeholder="多位作者用逗号分隔" /></label>
-              <label>出版社<input id="bookPublisher" name="publisher" /></label>
-              <label>出版时间<input id="bookPublishedDate" name="published_date" /></label>
-              <label>封面地址<input id="bookCoverUrl" name="cover_url" type="url" placeholder="https://" /></label>
-              <label class="wide">标签<input id="bookTags" name="tags" placeholder="文学，法律，待读" /></label>
-              <label class="wide">阅读状态
+              <label><span data-i18n="book.title">Title</span><input id="bookTitle" name="title" required /></label>
+              <label><span>ISBN</span><input id="bookIsbn" name="isbn" readonly required /></label>
+              <label><span data-i18n="book.authors">Authors</span><input id="bookAuthors" name="authors" placeholder="Separate multiple authors with commas" data-i18n-placeholder="book.authorsPlaceholder" /></label>
+              <label><span data-i18n="book.publisher">Publisher</span><input id="bookPublisher" name="publisher" /></label>
+              <label><span data-i18n="book.publishedDate">Publication date</span><input id="bookPublishedDate" name="published_date" /></label>
+              <label><span data-i18n="book.coverUrl">Cover URL</span><input id="bookCoverUrl" name="cover_url" type="url" placeholder="https://" /></label>
+              <label class="wide"><span data-i18n="book.tags">Tags</span><input id="bookTags" name="tags" placeholder="fiction, law, next" data-i18n-placeholder="book.tagsPlaceholder" /></label>
+              <label class="wide"><span data-i18n="book.status">Reading status</span>
                 <select id="bookStatus" name="reading_status">
-                  <option value="want">想读</option>
-                  <option value="reading">在读</option>
-                  <option value="read">已读</option>
+                  <option value="want" data-i18n="status.want">Want to Read</option>
+                  <option value="reading" data-i18n="status.reading">Reading</option>
+                  <option value="read" data-i18n="status.read">Read</option>
                 </select>
               </label>
-              <label class="wide">备注<textarea id="bookNotes" name="notes" rows="3" placeholder="可选"></textarea></label>
+              <label class="wide"><span data-i18n="book.notes">Notes</span><textarea id="bookNotes" name="notes" rows="3" placeholder="Optional" data-i18n-placeholder="book.optional"></textarea></label>
             </div>
           </div>
           <div class="form-actions">
-            <button class="ghost-button" id="cancelEditButton" type="button">取消</button>
-            <button class="primary-button" type="submit">保存到书架</button>
+            <button class="ghost-button" id="cancelEditButton" type="button" data-i18n="book.cancel">Cancel</button>
+            <button class="primary-button" type="submit" data-i18n="book.save">Save to shelf</button>
           </div>
         </form>
       </section>
 
       <section class="view" id="shelf" aria-labelledby="shelfTitle">
         <div class="section-heading shelf-heading">
-          <div><p class="step">YOUR BOOKS</p><h2 id="shelfTitle">我的书架</h2></div>
+          <div><p class="step" data-i18n="shelf.step">YOUR BOOKS</p><h2 id="shelfTitle" data-i18n="shelf.title">My bookshelf</h2></div>
           <div class="shelf-controls">
-            <input id="searchInput" type="search" placeholder="搜索书名、作者或 ISBN" aria-label="搜索书架" />
-            <select id="tagFilter" aria-label="按标签筛选"><option value="">全部标签</option></select>
-            <select id="sortSelect" aria-label="排序方式">
-              <option value="newest">最近添加</option>
-              <option value="oldest">最早添加</option>
-              <option value="title">按书名</option>
+            <input id="searchInput" type="search" placeholder="Search title, author, or ISBN" aria-label="Search bookshelf" data-i18n-placeholder="shelf.searchPlaceholder" data-i18n-aria-label="shelf.searchLabel" />
+            <select id="tagFilter" aria-label="Filter by tag" data-i18n-aria-label="shelf.tagLabel"><option value="" data-i18n="shelf.allTags">All tags</option></select>
+            <select id="sortSelect" aria-label="Sort books" data-i18n-aria-label="shelf.sortLabel">
+              <option value="newest" data-i18n="shelf.newest">Recently added</option>
+              <option value="oldest" data-i18n="shelf.oldest">Oldest added</option>
+              <option value="title" data-i18n="shelf.titleSort">Title</option>
             </select>
           </div>
         </div>
         <div class="book-grid" id="bookGrid"></div>
-        <div class="empty-state hidden" id="shelfEmpty"><strong>书架还是空的</strong><span>扫描 ISBN 或手动输入，添加第一本书。</span></div>
+        <div class="empty-state hidden" id="shelfEmpty"><strong data-i18n="shelf.emptyTitle">Your shelf is empty</strong><span data-i18n="shelf.emptyText">Scan or enter an ISBN to add your first book.</span></div>
       </section>
 
       <section class="view" id="board" aria-labelledby="boardTitle">
         <div class="section-heading shelf-heading">
-          <div><p class="step">READING FLOW</p><h2 id="boardTitle">阅读看板</h2></div>
-          <select id="boardTagFilter" aria-label="按标签筛选看板"><option value="">全部标签</option></select>
+          <div><p class="step">READING FLOW</p><h2 id="boardTitle" data-i18n="board.title">Reading board</h2></div>
+          <select id="boardTagFilter" aria-label="Filter board by tag" data-i18n-aria-label="board.tagLabel"><option value="" data-i18n="shelf.allTags">All tags</option></select>
         </div>
         <div class="board" id="readingBoard"></div>
       </section>
@@ -124,50 +125,50 @@
       <section class="view" id="export" aria-labelledby="exportTitle">
         <div class="panel export-panel">
           <p class="step">BACKUP</p>
-          <h2 id="exportTitle">导出书架数据</h2>
-          <p>导出当前模式下的全部图书。CSV 可以用 Excel、Numbers 或其他表格软件打开。</p>
-          <button class="primary-button" id="exportButton" type="button">导出 CSV</button>
-          <p class="privacy-note" id="storageNote">本机模式的数据只保存在当前浏览器中，请定期导出备份。</p>
+          <h2 id="exportTitle" data-i18n="export.title">Export bookshelf data</h2>
+          <p data-i18n="export.description">Export every book in the current mode. The CSV opens in Excel, Numbers, and other spreadsheet apps.</p>
+          <button class="primary-button" id="exportButton" type="button" data-i18n="export.button">Export CSV</button>
+          <p class="privacy-note" id="storageNote">Local data stays in this browser. Export a backup regularly.</p>
         </div>
       </section>
     </main>
 
     <dialog id="scannerDialog" class="scanner-dialog">
-      <div class="dialog-heading"><strong>扫描 ISBN 条码</strong><button id="closeScannerButton" type="button" aria-label="关闭">×</button></div>
+      <div class="dialog-heading"><strong data-i18n="scanner.title">Scan ISBN barcode</strong><button id="closeScannerButton" type="button" aria-label="Close" data-i18n-aria-label="common.close">×</button></div>
       <video id="scannerVideo" playsinline></video>
-      <p id="scannerHint">请把 ISBN 条码放到取景框中。</p>
+      <p id="scannerHint" data-i18n="scanner.position">Place the ISBN barcode inside the frame.</p>
     </dialog>
 
     <dialog id="authDialog" class="auth-dialog">
-      <form method="dialog" class="dialog-heading"><strong>邮箱云端书架</strong><button type="submit" aria-label="关闭">×</button></form>
+      <form method="dialog" class="dialog-heading"><strong data-i18n="auth.title">Email cloud shelf</strong><button type="submit" aria-label="Close" data-i18n-aria-label="common.close">×</button></form>
       <div id="signedOutPanel">
-        <p>输入邮箱获取六位验证码。首次登录会自动创建账号。</p>
+        <p data-i18n="auth.description">Enter your email to receive a six-digit code. Your account is created automatically the first time.</p>
         <form id="loginForm" class="auth-form">
-          <label>邮箱<input id="loginEmail" type="email" autocomplete="email" required /></label>
-          <label class="hidden" id="codeField">验证码<input id="loginCode" inputmode="numeric" autocomplete="one-time-code" /></label>
-          <button class="primary-button" id="loginButton" type="submit">发送验证码</button>
+          <label><span data-i18n="auth.email">Email</span><input id="loginEmail" type="email" autocomplete="email" required /></label>
+          <label class="hidden" id="codeField"><span data-i18n="auth.code">Verification code</span><input id="loginCode" inputmode="numeric" autocomplete="one-time-code" /></label>
+          <button class="primary-button" id="loginButton" type="submit" data-i18n="auth.send">Send code</button>
         </form>
-        <p class="hint" id="authHint">登录后显示云端书架；本机书架不会自动上传。</p>
+        <p class="hint" id="authHint">Signing in opens your cloud shelf. Local books are not uploaded automatically.</p>
       </div>
       <div class="hidden signed-in-panel" id="signedInPanel">
         <p id="accountEmail"></p>
-        <p>当前正在使用云端书架。退出后会回到这台设备的本机书架。</p>
-        <button class="danger-button" id="signOutButton" type="button">退出登录</button>
+        <p data-i18n="auth.signedIn">You are using the cloud shelf. Signing out returns to this device's local shelf.</p>
+        <button class="danger-button" id="signOutButton" type="button" data-i18n="auth.signOut">Sign out</button>
       </div>
     </dialog>
 
     <dialog id="editDialog" class="edit-dialog">
       <form id="editForm">
-        <div class="dialog-heading"><strong>编辑图书</strong><button id="closeEditButton" type="button" aria-label="关闭">×</button></div>
+        <div class="dialog-heading"><strong data-i18n="edit.title">Edit book</strong><button id="closeEditButton" type="button" aria-label="Close" data-i18n-aria-label="common.close">×</button></div>
         <input id="editId" type="hidden" />
-        <label>书名<input id="editTitle" required /></label>
-        <label>作者<input id="editAuthors" /></label>
-        <label>标签<input id="editTags" placeholder="多个标签用逗号分隔" /></label>
-        <label>阅读状态
-          <select id="editStatus"><option value="want">想读</option><option value="reading">在读</option><option value="read">已读</option></select>
+        <label><span data-i18n="book.title">Title</span><input id="editTitle" required /></label>
+        <label><span data-i18n="book.authors">Authors</span><input id="editAuthors" /></label>
+        <label><span data-i18n="book.tags">Tags</span><input id="editTags" placeholder="Separate tags with commas" data-i18n-placeholder="edit.tagsPlaceholder" /></label>
+        <label><span data-i18n="book.status">Reading status</span>
+          <select id="editStatus"><option value="want" data-i18n="status.want">Want to Read</option><option value="reading" data-i18n="status.reading">Reading</option><option value="read" data-i18n="status.read">Read</option></select>
         </label>
-        <label>备注<textarea id="editNotes" rows="3"></textarea></label>
-        <div class="form-actions"><button class="danger-button" id="deleteBookButton" type="button">删除</button><button class="primary-button" type="submit">保存修改</button></div>
+        <label><span data-i18n="book.notes">Notes</span><textarea id="editNotes" rows="3"></textarea></label>
+        <div class="form-actions"><button class="danger-button" id="deleteBookButton" type="button" data-i18n="edit.delete">Delete</button><button class="primary-button" type="submit" data-i18n="edit.save">Save changes</button></div>
       </form>
     </dialog>
 

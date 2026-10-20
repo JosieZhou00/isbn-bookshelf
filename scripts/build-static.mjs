@@ -23,6 +23,7 @@ const files = [
   "assets/book-lookup.js",
   "assets/csv-export.js",
   "assets/demo-store.js",
+  "assets/i18n.js",
   "assets/icon.svg",
   "assets/local-store.js",
   "assets/scanner.js",

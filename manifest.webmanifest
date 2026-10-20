@@ -1,7 +1,8 @@
 {
-  "name": "扫书架",
-  "short_name": "扫书架",
-  "description": "扫描 ISBN，建立想读、在读和已读书架。",
+  "name": "ISBN Bookshelf",
+  "short_name": "Bookshelf",
+  "description": "Scan ISBN barcodes and manage Want to Read, Reading, and Read books.",
+  "lang": "en",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

@@ -1,5 +1,6 @@
 // 本文件封装手机相机扫码，优先使用 BarcodeDetector，并以固定版本 ZXing 兜底。
 import { isValidIsbn, normalizeIsbn } from "./utils.js";
+import { t } from "./i18n.js";
 
 const ZXING_MODULE_URL = "https://esm.sh/@zxing/browser@0.1.5";
 
@@ -30,7 +31,7 @@ export class CameraScanner {
   // 检查页面是否满足 HTTPS 和相机 API 要求。
   ensureCameraAvailable() {
     if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
-      throw new Error("当前页面不能访问相机。请使用 HTTPS 地址，或改为手动输入 ISBN。");
+      throw new Error(t("scanner.unavailable"));
     }
   }
 
@@ -45,11 +46,11 @@ export class CameraScanner {
 
   // 动态加载 ZXing，在不支持 BarcodeDetector 的浏览器中识别条码。
   async startZxingScanner() {
-    this.hint.textContent = "正在加载兼容扫码组件，请稍等。";
+    this.hint.textContent = t("scanner.loading");
     const { BrowserMultiFormatReader } = await import(ZXING_MODULE_URL);
     const reader = new BrowserMultiFormatReader();
     this.zxingControls = await reader.decodeFromVideoDevice(undefined, this.video, (result) => this.acceptResult(result?.getText()));
-    this.hint.textContent = "请把 ISBN 条码放到取景框中。";
+    this.hint.textContent = t("scanner.position");
   }
 
   // 校验识别结果，只把有效 ISBN 交给界面。
@@ -78,10 +79,15 @@ export class CameraScanner {
       const codes = await this.detector.detect(this.video);
       const rawValue = codes?.[0]?.rawValue;
       if (rawValue) this.acceptResult(rawValue);
-      this.hint.textContent = "正在识别，请把条码放到画面中央。";
+      this.hint.textContent = t("scanner.scanning");
     } catch (error) {
-      this.hint.textContent = `识别遇到问题：${error.message}`;
+      this.hint.textContent = t("scanner.error", { message: error.message });
     }
     if (this.stream) this.timer = setTimeout(() => this.scanLoop(), 360);
+  }
+
+  // 在语言切换时刷新当前扫描提示。
+  updateLanguage() {
+    this.hint.textContent = this.stream || this.zxingControls ? t("scanner.scanning") : t("scanner.position");
   }
 }

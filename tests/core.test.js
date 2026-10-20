@@ -7,6 +7,7 @@ import { rowsToCsv } from "../assets/csv-export.js";
 import { createManualLookupResult, normalizeNeoDbBook, selectExactNeoDbItem } from "../assets/book-lookup.js";
 import { getVerifiedBookByIsbn } from "../assets/verified-books.js";
 import { isValidIsbn, normalizeIsbn, normalizeTags } from "../assets/utils.js";
+import { getLanguage, setLanguage, t } from "../assets/i18n.js";
 
 class MemoryStorage {
   // 创建用于测试的内存键值存储。
@@ -70,6 +71,15 @@ test("查无书目时进入手动录入", () => {
 // 验证标签去空白和不区分大小写去重。
 test("标签规范化", () => {
   assert.deepEqual(normalizeTags("文学， 法律,文学,AI,ai"), ["文学", "法律", "AI"]);
+});
+
+// 验证首次使用默认为英文，并可以在中英文之间切换。
+test("中英文界面切换", () => {
+  assert.equal(getLanguage(), "en");
+  assert.equal(t("status.want"), "Want to Read");
+  setLanguage("zh-CN");
+  assert.equal(t("status.want"), "想读");
+  setLanguage("en");
 });
 
 // 验证本机书架按 ISBN 更新并支持状态切换。

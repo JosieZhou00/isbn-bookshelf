@@ -1,10 +1,12 @@
 // 本文件提供 ISBN 校验、标签整理、日期格式化和安全输出等通用函数。
+import { getLocale, t } from "./i18n.js";
+
 export const CONFIG = typeof window === "undefined" ? {} : (window.ISBN_BOOKSHELF_CONFIG || {});
 
 export const READING_STATUSES = [
-  { value: "want", label: "想读" },
-  { value: "reading", label: "在读" },
-  { value: "read", label: "已读" }
+  { value: "want" },
+  { value: "reading" },
+  { value: "read" }
 ];
 
 // 判断前端是否已经填写 Supabase 公开配置。
@@ -48,9 +50,9 @@ export function normalizeStatus(value) {
   return READING_STATUSES.some((status) => status.value === value) ? value : "want";
 }
 
-// 返回阅读状态对应的中文名称。
+// 返回阅读状态对应的当前语言名称。
 export function statusLabel(value) {
-  return READING_STATUSES.find((status) => status.value === normalizeStatus(value))?.label || "想读";
+  return t(`status.${normalizeStatus(value)}`);
 }
 
 // 生成浏览器和测试环境都可使用的轻量 ID。
@@ -83,12 +85,12 @@ export function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[character]));
 }
 
-// 把时间转换为简短的中文日期。
+// 把时间转换为当前语言的简短日期。
 export function formatDate(value) {
   if (!value) return "";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return String(value);
-  return date.toLocaleDateString("zh-CN", { year: "numeric", month: "short", day: "numeric" });
+  return date.toLocaleDateString(getLocale(), { year: "numeric", month: "short", day: "numeric" });
 }
 
 // 生成适合导出文件名使用的本地日期戳。
@@ -102,16 +104,16 @@ export function dateStamp() {
 export async function saveTextFile(filename, text, type = "text/csv;charset=utf-8") {
   const blob = new Blob(["\ufeff", text], { type });
   if (window.showSaveFilePicker) {
-    const handle = await window.showSaveFilePicker({ suggestedName: filename, types: [{ description: "CSV 文件", accept: { "text/csv": [".csv"] } }] });
+    const handle = await window.showSaveFilePicker({ suggestedName: filename, types: [{ description: t("csv.fileDescription"), accept: { "text/csv": [".csv"] } }] });
     const writable = await handle.createWritable();
     await writable.write(blob);
     await writable.close();
-    return "已保存到选择的位置";
+    return t("csv.saved");
   }
   const file = new File([blob], filename, { type });
   if (navigator.canShare?.({ files: [file] })) {
     await navigator.share({ files: [file], title: filename });
-    return "已打开系统保存或分享面板";
+    return t("csv.shared");
   }
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -119,5 +121,5 @@ export async function saveTextFile(filename, text, type = "text/csv;charset=utf-
   link.download = filename;
   link.click();
   URL.revokeObjectURL(url);
-  return "已下载 CSV 文件";
+  return t("csv.downloaded");
 }

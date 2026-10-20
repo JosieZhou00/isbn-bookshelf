@@ -1,5 +1,6 @@
 // 本文件把当前书架转换为 Excel 和 Numbers 可直接打开的 UTF-8 CSV。
 import { dateStamp, saveTextFile, statusLabel } from "./utils.js";
+import { getLanguage, t } from "./i18n.js";
 
 // 转义 CSV 单元格中的引号和换行。
 function csvCell(value) {
@@ -15,7 +16,7 @@ export function rowsToCsv(rows) {
 // 导出书架的核心字段和阅读状态。
 export async function exportBooks(books) {
   const rows = [
-    ["书名", "ISBN", "作者", "出版社", "出版时间", "阅读状态", "标签", "备注", "封面地址", "添加时间", "更新时间"],
+    [t("csv.title"), t("csv.isbn"), t("csv.authors"), t("csv.publisher"), t("csv.publishedDate"), t("csv.status"), t("csv.tags"), t("csv.notes"), t("csv.coverUrl"), t("csv.createdAt"), t("csv.updatedAt")],
     ...books.map((book) => [
       book.title,
       book.isbn,
@@ -30,7 +31,7 @@ export async function exportBooks(books) {
       book.updated_at
     ])
   ];
-  const filename = `扫书架_${dateStamp()}.csv`;
+  const filename = `${getLanguage() === "zh-CN" ? "扫书架" : "isbn-bookshelf"}_${dateStamp()}.csv`;
   const result = await saveTextFile(filename, rowsToCsv(rows));
   return { filename, result };
 }

@@ -1,5 +1,6 @@
 // 本文件提供只在内存中运行的公开演示书架，不读取或写入访客的本机数据。
 import { normalizeBook, normalizeStatus } from "./utils.js";
+import { t } from "./i18n.js";
 
 const DEMO_BOOKS = [
   {
@@ -78,7 +79,7 @@ export class DemoStore {
   // 在当前页面会话内切换阅读状态。
   async updateStatus(id, readingStatus) {
     const book = this.books.find((item) => item.id === id);
-    if (!book) throw new Error("没有找到这本演示书籍。");
+    if (!book) throw new Error(t("error.demoMissing"));
     book.reading_status = normalizeStatus(readingStatus);
     book.updated_at = new Date().toISOString();
     return cloneBook(book);
@@ -87,7 +88,7 @@ export class DemoStore {
   // 在当前页面会话内删除演示书籍。
   async deleteBook(id) {
     const nextBooks = this.books.filter((book) => book.id !== id);
-    if (nextBooks.length === this.books.length) throw new Error("没有找到要删除的演示书籍。");
+    if (nextBooks.length === this.books.length) throw new Error(t("error.demoMissing"));
     this.books = nextBooks;
     return true;
   }

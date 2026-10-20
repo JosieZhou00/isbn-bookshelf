@@ -1,5 +1,6 @@
 // 本文件实现免注册书架，全部数据只写入当前浏览器的 localStorage。
 import { normalizeBook, normalizeStatus } from "./utils.js";
+import { t } from "./i18n.js";
 
 const STORAGE_KEY = "isbn-bookshelf-local-v1";
 
@@ -25,7 +26,7 @@ export class LocalStore {
       const data = JSON.parse(raw);
       return { books: Array.isArray(data.books) ? data.books.map(normalizeBook) : [] };
     } catch {
-      throw new Error("本机书架数据无法读取，请先保留浏览器数据并联系维护者处理。");
+      throw new Error(t("error.localRead"));
     }
   }
 
@@ -34,7 +35,7 @@ export class LocalStore {
     try {
       this.storage.setItem(STORAGE_KEY, JSON.stringify(data));
     } catch (error) {
-      throw new Error(`本机书架保存失败：${error.message}`);
+      throw new Error(t("error.localSave", { message: error.message }));
     }
   }
 
@@ -67,7 +68,7 @@ export class LocalStore {
   async updateStatus(id, readingStatus) {
     const data = this.readData();
     const book = data.books.find((item) => item.id === id);
-    if (!book) throw new Error("没有找到这本书，可能已经被删除。");
+    if (!book) throw new Error(t("error.bookMissing"));
     book.reading_status = normalizeStatus(readingStatus);
     book.updated_at = new Date().toISOString();
     this.writeData(data);
@@ -78,7 +79,7 @@ export class LocalStore {
   async deleteBook(id) {
     const data = this.readData();
     const nextBooks = data.books.filter((book) => book.id !== id);
-    if (nextBooks.length === data.books.length) throw new Error("没有找到要删除的图书。");
+    if (nextBooks.length === data.books.length) throw new Error(t("error.deleteMissing"));
     this.writeData({ books: nextBooks });
     return true;
   }

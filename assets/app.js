@@ -1,7 +1,8 @@
 // 本文件协调扫码、查书、登录、存储、书架筛选、阅读看板和导出交互。
-import { lookupBookByIsbn } from "./book-lookup.js?v=8";
+import { lookupBookByIsbn } from "./book-lookup.js?v=9";
 import { exportBooks } from "./csv-export.js";
 import { DemoStore } from "./demo-store.js";
+import { applyTranslations, sourceLabel, t, toggleLanguage } from "./i18n.js";
 import { LocalStore } from "./local-store.js";
 import { CameraScanner } from "./scanner.js";
 import { SupabaseStore } from "./supabase-store.js";
@@ -12,7 +13,7 @@ const $ = (selector) => document.querySelector(selector);
 const elements = {
   navButtons: [...document.querySelectorAll(".nav-button")],
   views: [...document.querySelectorAll(".view")],
-  modeBadge: $("#modeBadge"), authButton: $("#authButton"), totalCount: $("#totalCount"),
+  modeBadge: $("#modeBadge"), authButton: $("#authButton"), languageButton: $("#languageButton"), totalCount: $("#totalCount"),
   isbnForm: $("#isbnForm"), isbnInput: $("#isbnInput"), lookupHint: $("#lookupHint"), cameraButton: $("#cameraButton"),
   bookForm: $("#bookForm"), cancelEditButton: $("#cancelEditButton"),
   bookGrid: $("#bookGrid"), shelfEmpty: $("#shelfEmpty"), searchInput: $("#searchInput"), tagFilter: $("#tagFilter"), sortSelect: $("#sortSelect"),
@@ -30,7 +31,7 @@ const bookFields = {
 };
 
 const demoMode = new URLSearchParams(location.search).get("demo") === "1";
-const state = { books: [], store: new LocalStore(), localStore: null, cloudStore: null, demoStore: null, lookupBook: null, toastTimer: null };
+const state = { books: [], store: new LocalStore(), localStore: null, cloudStore: null, demoStore: null, lookupBook: null, lookupStatus: "idle", toastTimer: null };
 state.localStore = state.store;
 
 const scanner = new CameraScanner({
@@ -54,7 +55,7 @@ function toast(message) {
 // 将未知异常转换为可读提示。
 function showError(error) {
   console.error(error);
-  toast(error?.message || "操作失败，请稍后重试。");
+  toast(error?.message || t("error.generic"));
 }
 
 // 切换主要视图，并同步导航按钮状态。
@@ -95,29 +96,49 @@ function renderAccountState() {
   const session = state.cloudStore?.session;
   const demo = state.store.mode === "demo";
   const cloud = state.store.mode === "cloud" && session;
-  elements.modeBadge.textContent = demo ? "演示书架" : cloud ? "云端书架" : "本机书架";
-  elements.authButton.textContent = demo ? "退出演示" : cloud ? "账号" : "邮箱登录";
+  elements.modeBadge.textContent = demo ? t("mode.demo") : cloud ? t("mode.cloud") : t("mode.local");
+  elements.authButton.textContent = demo ? t("auth.exitDemo") : cloud ? t("auth.account") : t("auth.emailLogin");
   elements.signedOutPanel.classList.toggle("hidden", Boolean(session));
   elements.signedInPanel.classList.toggle("hidden", !session);
-  elements.accountEmail.textContent = session ? `当前账号：${session.user.email}` : "";
-  elements.storageNote.textContent = demo ? "演示数据只存在于当前页面会话，不会写入你的个人书架。" : cloud ? "云端数据与当前邮箱账号绑定，导出文件仍会保存在你选择的位置。" : "本机模式的数据只保存在当前浏览器中，请定期导出备份。";
+  elements.accountEmail.textContent = session ? t("auth.current", { email: session.user.email }) : "";
+  elements.storageNote.textContent = demo ? t("storage.demo") : cloud ? t("storage.cloud") : t("storage.local");
+  const waitingForCode = !elements.codeField.classList.contains("hidden");
+  elements.loginButton.textContent = waitingForCode ? t("auth.verify") : t("auth.send");
+  elements.authHint.textContent = waitingForCode ? t("auth.sent") : t("auth.hint");
+}
+
+// 根据当前查询阶段刷新可切换语言的提示文字。
+function renderLookupHint() {
+  const key = {
+    idle: "lookup.idle",
+    existing: "lookup.existing",
+    loading: "lookup.loading",
+    found: "lookup.found",
+    sourceError: "lookup.sourceError",
+    partialError: "lookup.partialError",
+    notFound: "lookup.notFound"
+  }[state.lookupStatus] || "lookup.idle";
+  const values = key === "lookup.found" ? { source: sourceLabel(state.lookupBook?.source || "书架") } : {};
+  elements.lookupHint.textContent = t(key, values);
 }
 
 // 查询 ISBN 并展开资料确认表单。
 async function handleLookup() {
   const isbn = normalizeIsbn(elements.isbnInput.value);
-  if (!isValidIsbn(isbn)) throw new Error("ISBN 格式或校验位不正确，请重新检查。");
+  if (!isValidIsbn(isbn)) throw new Error(t("lookup.invalid"));
   elements.isbnInput.value = isbn;
   const existing = state.books.find((book) => book.isbn === isbn);
-  elements.lookupHint.textContent = existing ? "这本书已在当前书架中，可以修改后保存。" : "正在查询图书资料……";
+  state.lookupStatus = existing ? "existing" : "loading";
+  renderLookupHint();
   const book = existing || await lookupBookByIsbn(isbn, state.cloudStore?.session?.access_token || "");
   state.lookupBook = book;
   fillBookForm(book, bookFields);
   elements.bookForm.classList.remove("hidden");
-  if (book.title) elements.lookupHint.textContent = `已从${book.source || "书架"}取得资料，请确认后保存。`;
-  else if (book.lookup_status === "source-error") elements.lookupHint.textContent = "查书服务暂时全部不可用；已保留 ISBN，请稍后重试或手动填写书名后保存。";
-  else if (book.unavailable_sources?.length) elements.lookupHint.textContent = "未找到可核验的精确书目，且部分来源暂时不可用；已保留 ISBN，请手动填写书名后保存。";
-  else elements.lookupHint.textContent = "已查询全部可用来源，但没有找到可核验的精确书目；已保留 ISBN，请手动填写书名后保存。";
+  if (book.title) state.lookupStatus = "found";
+  else if (book.lookup_status === "source-error") state.lookupStatus = "sourceError";
+  else if (book.unavailable_sources?.length) state.lookupStatus = "partialError";
+  else state.lookupStatus = "notFound";
+  renderLookupHint();
   bookFields.title.focus();
 }
 
@@ -134,7 +155,7 @@ function collectBookForm() {
     tags: normalizeTags(bookFields.tags.value),
     reading_status: bookFields.status.value,
     notes: bookFields.notes.value,
-    source: bookFields.source.textContent
+    source: bookFields.source.dataset.source || state.lookupBook?.source || "手动录入"
   });
 }
 
@@ -142,14 +163,16 @@ function collectBookForm() {
 async function handleSaveBook(event) {
   event.preventDefault();
   const book = collectBookForm();
-  if (!book.title) throw new Error("请填写书名。");
+  if (!book.title) throw new Error(t("error.titleRequired"));
   await state.store.saveBook(book);
   elements.bookForm.classList.add("hidden");
   elements.isbnForm.reset();
   state.lookupBook = null;
+  state.lookupStatus = "idle";
+  renderLookupHint();
   await refreshBooks();
   activateView("shelf");
-  toast("已保存到书架。");
+  toast(t("toast.saved"));
 }
 
 // 更新卡片或看板中的阅读状态。
@@ -158,13 +181,13 @@ async function handleStatusChange(event) {
   if (!id) return;
   await state.store.updateStatus(id, event.target.value);
   await refreshBooks();
-  toast("阅读状态已更新。");
+  toast(t("toast.statusUpdated"));
 }
 
 // 打开指定图书的编辑弹窗。
 function openEditDialog(id) {
   const book = state.books.find((item) => item.id === id);
-  if (!book) throw new Error("没有找到这本书。");
+  if (!book) throw new Error(t("error.bookMissing"));
   elements.editId.value = book.id;
   elements.editTitle.value = book.title;
   elements.editAuthors.value = (book.authors || []).join("，");
@@ -178,28 +201,28 @@ function openEditDialog(id) {
 async function handleEditSave(event) {
   event.preventDefault();
   const existing = state.books.find((book) => book.id === elements.editId.value);
-  if (!existing) throw new Error("没有找到要修改的图书。");
+  if (!existing) throw new Error(t("error.editMissing"));
   await state.store.saveBook({ ...existing, title: elements.editTitle.value, authors: elements.editAuthors.value, tags: elements.editTags.value, reading_status: elements.editStatus.value, notes: elements.editNotes.value });
   elements.editDialog.close();
   await refreshBooks();
-  toast("修改已保存。");
+  toast(t("toast.edited"));
 }
 
 // 经用户确认后删除当前编辑的图书。
 async function handleDeleteBook() {
   const book = state.books.find((item) => item.id === elements.editId.value);
-  if (!book) throw new Error("没有找到要删除的图书。");
-  if (!window.confirm(`确认从书架删除《${book.title}》？`)) return;
+  if (!book) throw new Error(t("error.deleteMissing"));
+  if (!window.confirm(t("confirm.delete", { title: book.title }))) return;
   await state.store.deleteBook(book.id);
   elements.editDialog.close();
   await refreshBooks();
-  toast("图书已删除。");
+  toast(t("toast.deleted"));
 }
 
 // 发送或验证邮箱验证码。
 async function handleLogin(event) {
   event.preventDefault();
-  if (!state.cloudStore) throw new Error("尚未配置 Supabase，当前只能使用本机书架。");
+  if (!state.cloudStore) throw new Error(t("error.cloudNotConfigured"));
   const email = elements.loginEmail.value.trim();
   const waitingForCode = !elements.codeField.classList.contains("hidden");
   elements.loginButton.disabled = true;
@@ -208,15 +231,15 @@ async function handleLogin(event) {
       await state.cloudStore.signIn(email);
       elements.codeField.classList.remove("hidden");
       elements.loginCode.required = true;
-      elements.loginButton.textContent = "验证并登录";
-      elements.authHint.textContent = "验证码已发送。请查看邮箱，并在此输入六位验证码。";
+      elements.loginButton.textContent = t("auth.verify");
+      elements.authHint.textContent = t("auth.sent");
       elements.loginCode.focus();
       return;
     }
     await state.cloudStore.verifyOtp(email, elements.loginCode.value.trim());
     await switchStore(state.cloudStore);
     elements.authDialog.close();
-    toast("登录成功，已切换到云端书架。");
+    toast(t("toast.signedIn"));
   } finally {
     elements.loginButton.disabled = false;
   }
@@ -227,11 +250,12 @@ async function handleSignOut() {
   await state.cloudStore.signOut();
   await switchStore(state.localStore);
   elements.authDialog.close();
-  toast("已退出，当前显示本机书架。");
+  toast(t("toast.signedOut"));
 }
 
 // 绑定静态页面的所有用户交互。
 function bindEvents() {
+  elements.languageButton.addEventListener("click", toggleLanguage);
   elements.navButtons.forEach((button) => button.addEventListener("click", () => activateView(button.dataset.view)));
   elements.isbnForm.addEventListener("submit", (event) => { event.preventDefault(); handleLookup().catch(showError); });
   elements.bookForm.addEventListener("submit", (event) => handleSaveBook(event).catch(showError));
@@ -258,7 +282,7 @@ function bindEvents() {
       location.href = url.toString();
       return;
     }
-    if (!hasCloudConfig()) return toast("云端功能尚未配置，当前可以继续使用本机书架。");
+    if (!hasCloudConfig()) return toast(t("toast.cloudUnavailable"));
     renderAccountState();
     elements.authDialog.showModal();
   });
@@ -268,10 +292,21 @@ function bindEvents() {
     if (event.detail && state.store.mode !== "cloud") await switchStore(state.cloudStore);
     if (!event.detail && state.store.mode === "cloud") await switchStore(state.localStore);
   });
+  window.addEventListener("bookshelf:language-change", () => {
+    renderAccountState();
+    renderLookupHint();
+    if (state.lookupBook) {
+      bookFields.source.textContent = sourceLabel(state.lookupBook.source);
+      renderCoverPreview(bookFields.coverUrl.value, bookFields.title.value, bookFields.coverPreview);
+    }
+    scanner.updateLanguage();
+    refreshBooks().catch(showError);
+  });
 }
 
 // 初始化本机书架、可选云端客户端、路由和 Service Worker。
 async function init() {
+  applyTranslations();
   bindEvents();
   await state.localStore.init();
   if (demoMode) {
@@ -287,7 +322,7 @@ async function init() {
   renderAccountState();
   const initialView = location.hash.slice(1);
   if (["add", "shelf", "board", "export"].includes(initialView)) activateView(initialView);
-  if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch((error) => console.warn("Service Worker 注册失败", error));
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch((error) => console.warn(t("log.serviceWorker"), error));
 }
 
 init().catch(showError);

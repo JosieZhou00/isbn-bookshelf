@@ -1,5 +1,6 @@
 // 本文件封装 Supabase 邮箱验证码登录和个人书架的数据访问。
 import { CONFIG, normalizeBook, normalizeStatus } from "./utils.js";
+import { t } from "./i18n.js";
 
 const AUTH_STORAGE_KEY = "isbn-bookshelf-auth";
 const SUPABASE_MODULE_URLS = [
@@ -18,7 +19,7 @@ async function loadSupabaseClient() {
       lastError = error;
     }
   }
-  throw new Error(`无法加载云端组件：${lastError?.message || "请检查网络"}`);
+  throw new Error(t("error.cloudLoad", { message: lastError?.message || t("error.generic") }));
 }
 
 export class SupabaseStore {
@@ -49,7 +50,7 @@ export class SupabaseStore {
   async signIn(email) {
     const redirectTo = CONFIG.appUrl || `${location.origin}${location.pathname}`;
     const { error } = await this.client.auth.signInWithOtp({ email, options: { emailRedirectTo: redirectTo, shouldCreateUser: true } });
-    if (error) throw new Error(/rate limit/i.test(error.message || "") ? "验证码发送过于频繁，请稍后再试。" : error.message);
+    if (error) throw new Error(/rate limit/i.test(error.message || "") ? t("error.rateLimit") : error.message);
     return true;
   }
 
@@ -80,7 +81,7 @@ export class SupabaseStore {
   // 新增或更新当前用户的书籍，ISBN 在单个账号内保持唯一。
   async saveBook(bookPayload) {
     const userId = this.session?.user?.id;
-    if (!userId) throw new Error("登录已失效，请重新登录。");
+    if (!userId) throw new Error(t("error.sessionExpired"));
     const book = normalizeBook(bookPayload);
     const payload = { ...book, user_id: userId, updated_at: new Date().toISOString() };
     if (!bookPayload.id) delete payload.id;

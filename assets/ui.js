@@ -1,5 +1,6 @@
 // 本文件负责书架卡片、筛选项和阅读看板的安全渲染，不直接访问数据源。
 import { READING_STATUSES, escapeHtml, formatDate, normalizeTags, statusLabel } from "./utils.js";
+import { getLocale, sourceLabel, t } from "./i18n.js";
 
 // 仅允许 http 和 https 封面地址进入页面属性。
 function safeImageUrl(value) {
@@ -14,20 +15,21 @@ function safeImageUrl(value) {
 // 生成封面图片或文字占位。
 function coverMarkup(book, className = "") {
   const url = safeImageUrl(book.cover_url);
-  return url ? `<img class="${className}" src="${url}" alt="${escapeHtml(book.title)}封面" loading="lazy" referrerpolicy="no-referrer" />` : `<span aria-hidden="true">${escapeHtml(book.title?.slice(0, 1) || "书")}</span>`;
+  const title = book.title || t("book.untitled");
+  return url ? `<img class="${className}" src="${url}" alt="${escapeHtml(t("book.coverAlt", { title }))}" loading="lazy" referrerpolicy="no-referrer" />` : `<span aria-hidden="true">${escapeHtml(book.title?.slice(0, 1) || t("brand.mark"))}</span>`;
 }
 
 // 生成阅读状态下拉选项。
 function statusOptions(current) {
-  return READING_STATUSES.map((status) => `<option value="${status.value}" ${status.value === current ? "selected" : ""}>${status.label}</option>`).join("");
+  return READING_STATUSES.map((status) => `<option value="${status.value}" ${status.value === current ? "selected" : ""}>${t(`status.${status.value}`)}</option>`).join("");
 }
 
 // 汇总全部标签并更新书架与看板筛选框。
 export function renderTagFilters(books, shelfSelect, boardSelect) {
   const currentShelf = shelfSelect.value;
   const currentBoard = boardSelect.value;
-  const tags = normalizeTags(books.flatMap((book) => book.tags || [])).sort((a, b) => a.localeCompare(b, "zh-CN"));
-  const options = `<option value="">全部标签</option>${tags.map((tag) => `<option value="${escapeHtml(tag)}">${escapeHtml(tag)}</option>`).join("")}`;
+  const tags = normalizeTags(books.flatMap((book) => book.tags || [])).sort((a, b) => a.localeCompare(b, getLocale()));
+  const options = `<option value="">${t("shelf.allTags")}</option>${tags.map((tag) => `<option value="${escapeHtml(tag)}">${escapeHtml(tag)}</option>`).join("")}`;
   shelfSelect.innerHTML = options;
   boardSelect.innerHTML = options;
   shelfSelect.value = tags.includes(currentShelf) ? currentShelf : "";
@@ -43,7 +45,7 @@ export function renderShelf({ books, container, empty, query = "", tag = "", sor
   });
   filtered.sort((a, b) => {
     if (sort === "oldest") return a.created_at.localeCompare(b.created_at);
-    if (sort === "title") return a.title.localeCompare(b.title, "zh-CN");
+    if (sort === "title") return a.title.localeCompare(b.title, getLocale());
     return b.created_at.localeCompare(a.created_at);
   });
   container.innerHTML = filtered.map((book) => `
@@ -53,13 +55,13 @@ export function renderShelf({ books, container, empty, query = "", tag = "", sor
         <span class="status-pill">${statusLabel(book.reading_status)}</span>
       </div>
       <div class="book-card-body">
-        <h3>${escapeHtml(book.title || "未命名图书")}</h3>
-        <p class="book-meta">${escapeHtml((book.authors || []).join("，") || "作者未录入")}</p>
-        <p class="book-meta">ISBN ${escapeHtml(book.isbn)} · ${formatDate(book.created_at)}添加</p>
+        <h3>${escapeHtml(book.title || t("book.untitled"))}</h3>
+        <p class="book-meta">${escapeHtml((book.authors || []).join(", ") || t("book.unknownAuthor"))}</p>
+        <p class="book-meta">ISBN ${escapeHtml(book.isbn)} · ${escapeHtml(t("book.added", { date: formatDate(book.created_at) }))}</p>
         <div class="tags">${(book.tags || []).map((item) => `<span class="tag">${escapeHtml(item)}</span>`).join("")}</div>
         <div class="card-actions">
-          <select class="status-select" data-status-id="${escapeHtml(book.id)}" aria-label="更改《${escapeHtml(book.title)}》的阅读状态">${statusOptions(book.reading_status)}</select>
-          <button type="button" data-edit-id="${escapeHtml(book.id)}">编辑</button>
+          <select class="status-select" data-status-id="${escapeHtml(book.id)}" aria-label="${escapeHtml(t("book.statusAria", { title: book.title }))}">${statusOptions(book.reading_status)}</select>
+          <button type="button" data-edit-id="${escapeHtml(book.id)}">${t("book.edit")}</button>
         </div>
       </div>
     </article>
@@ -74,17 +76,17 @@ export function renderBoard({ books, container, tag = "" }) {
     const items = filtered.filter((book) => book.reading_status === status.value);
     return `
       <section class="board-column" aria-labelledby="column-${status.value}">
-        <div class="board-column-header"><h3 id="column-${status.value}">${status.label}</h3><span class="board-count">${items.length}</span></div>
+        <div class="board-column-header"><h3 id="column-${status.value}">${t(`status.${status.value}`)}</h3><span class="board-count">${items.length}</span></div>
         <div class="board-list">
           ${items.length ? items.map((book) => `
             <article class="board-card">
               <div class="book-card-cover board-cover">${coverMarkup(book, "board-cover")}</div>
               <div>
-                <h4>${escapeHtml(book.title || "未命名图书")}</h4>
-                <select data-status-id="${escapeHtml(book.id)}" aria-label="更改《${escapeHtml(book.title)}》的阅读状态">${statusOptions(book.reading_status)}</select>
+                <h4>${escapeHtml(book.title || t("book.untitled"))}</h4>
+                <select data-status-id="${escapeHtml(book.id)}" aria-label="${escapeHtml(t("book.statusAria", { title: book.title }))}">${statusOptions(book.reading_status)}</select>
               </div>
             </article>
-          `).join("") : `<p class="board-empty">这里还没有书</p>`}
+          `).join("") : `<p class="board-empty">${t("board.empty")}</p>`}
         </div>
       </section>
     `;
@@ -102,12 +104,14 @@ export function fillBookForm(book, fields) {
   fields.tags.value = (book.tags || []).join("，");
   fields.status.value = book.reading_status || "want";
   fields.notes.value = book.notes || "";
-  fields.source.textContent = book.source || "手动录入";
+  fields.source.dataset.source = book.source || "手动录入";
+  fields.source.textContent = sourceLabel(book.source);
   renderCoverPreview(book.cover_url, book.title, fields.coverPreview);
 }
 
 // 刷新新增表单的封面预览。
 export function renderCoverPreview(url, title, container) {
   const safeUrl = safeImageUrl(url);
-  container.innerHTML = safeUrl ? `<img src="${safeUrl}" alt="${escapeHtml(title || "图书")}封面" referrerpolicy="no-referrer" />` : "<span>暂无封面</span>";
+  const bookTitle = title || t("book.untitled");
+  container.innerHTML = safeUrl ? `<img src="${safeUrl}" alt="${escapeHtml(t("book.coverAlt", { title: bookTitle }))}" referrerpolicy="no-referrer" />` : `<span>${t("book.noCover")}</span>`;
 }

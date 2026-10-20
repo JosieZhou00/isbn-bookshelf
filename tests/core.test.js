@@ -39,6 +39,7 @@ test("NeoDB 中文书目字段映射", () => {
   assert.equal(book.publisher, "华夏出版社");
   assert.equal(book.published_date, "2025");
   assert.equal(book.source, "NeoDB 中文书目");
+  assert.equal(normalizeNeoDbBook("9787519791551", null), null);
 });
 
 // 验证 NeoDB 模糊搜索不会把相近 ISBN 的第一本误认为目标书籍。
@@ -53,6 +54,10 @@ test("已核验 ISBN 纠错", () => {
   assert.equal(book.title, "你好，我是阿斯伯格女孩");
   assert.deepEqual(book.authors, ["露迪·西蒙"]);
   assert.equal(book.publisher, "华夏出版社");
+  const legalAiBook = getVerifiedBookByIsbn("9787519791551");
+  assert.equal(legalAiBook.title, "司法裁判过程中的人工智能应用研究");
+  assert.deepEqual(legalAiBook.authors, ["彭中礼"]);
+  assert.equal(legalAiBook.publisher, "法律出版社");
 });
 
 // 验证标签去空白和不区分大小写去重。

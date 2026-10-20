@@ -1,14 +1,14 @@
 // 本文件缓存应用外壳，使已打开过的书架在弱网环境下仍可访问本地数据。
-const CACHE_NAME = "isbn-bookshelf-v5";
+const CACHE_NAME = "isbn-bookshelf-v6";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./assets/styles.css",
-  "./assets/app.js?v=5",
+  "./assets/app.js?v=6",
   "./assets/ui.js",
   "./assets/utils.js",
   "./assets/scanner.js",
-  "./assets/book-lookup.js?v=5",
+  "./assets/book-lookup.js?v=6",
   "./assets/verified-books.js",
   "./assets/local-store.js",
   "./assets/supabase-store.js",

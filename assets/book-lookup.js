@@ -43,7 +43,7 @@ function cleanAuthor(value) {
 
 // 把 NeoDB 返回的中文书目字段整理为应用内部结构。
 export function normalizeNeoDbBook(isbn, item = {}) {
-  if (!item.title && !item.display_title) return null;
+  if (!item || (!item.title && !item.display_title)) return null;
   const title = String(item.display_title || item.title || "").trim();
   const subtitle = String(item.subtitle || "").trim();
   return normalizeBook({

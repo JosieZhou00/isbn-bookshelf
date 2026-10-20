@@ -2,6 +2,14 @@
 import { normalizeBook, normalizeIsbn } from "./utils.js";
 
 const VERIFIED_BOOKS = {
+  "9787519791551": {
+    title: "司法裁判过程中的人工智能应用研究",
+    authors: ["彭中礼"],
+    publisher: "法律出版社",
+    published_date: "2024",
+    cover_url: "https://books.google.com/books/content?id=0ncL0QEACAAJ&printsec=frontcover&img=1&zoom=1&source=gbs_api",
+    source: "Google Books（精确 ISBN）"
+  },
   "9787522206042": {
     title: "你好，我是阿斯伯格女孩",
     authors: ["露迪·西蒙"],

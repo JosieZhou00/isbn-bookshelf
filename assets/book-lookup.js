@@ -12,16 +12,59 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 7000) {
   }
 }
 
+// 读取独立查书配置；未单独填写时兼容使用云端书架项目。
+export function getLookupBackendConfig() {
+  return {
+    url: CONFIG.lookupSupabaseUrl || CONFIG.supabaseUrl || "",
+    key: CONFIG.lookupSupabasePublishableKey || CONFIG.supabasePublishableKey || "",
+    functionName: CONFIG.lookupFunctionName || "isbn-bookshelf-lookup"
+  };
+}
+
 // 调用 Supabase Edge Function，公开密钥放在 apikey 请求头中。
 async function lookupByBackend(isbn, accessToken = "") {
-  if (!CONFIG.supabaseUrl || !CONFIG.supabasePublishableKey) return null;
-  const endpoint = `${CONFIG.supabaseUrl.replace(/\/$/, "")}/functions/v1/book-lookup?isbn=${encodeURIComponent(isbn)}`;
-  const headers = { apikey: CONFIG.supabasePublishableKey };
+  const backend = getLookupBackendConfig();
+  if (!backend.url || !backend.key) return null;
+  const endpoint = `${backend.url.replace(/\/$/, "")}/functions/v1/${encodeURIComponent(backend.functionName)}?isbn=${encodeURIComponent(isbn)}`;
+  const headers = { apikey: backend.key };
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+  else if (/^eyJ[^.]+\.[^.]+\.[^.]+$/.test(backend.key)) headers.Authorization = `Bearer ${backend.key}`;
   const response = await fetchWithTimeout(endpoint, { headers });
   if (!response.ok) throw new Error(`云端查书返回 ${response.status}`);
   const result = await response.json();
   return result.found ? normalizeBook({ ...result.book, source: result.source }) : null;
+}
+
+// 去掉作者名前容易出错的国籍前缀，保留可检索的人名主体。
+function cleanAuthor(value) {
+  return String(value || "").replace(/^[（(][^）)]{1,12}[）)]\s*/, "").trim();
+}
+
+// 把 NeoDB 返回的中文书目字段整理为应用内部结构。
+export function normalizeNeoDbBook(isbn, item = {}) {
+  if (!item.title && !item.display_title) return null;
+  const title = String(item.display_title || item.title || "").trim();
+  const subtitle = String(item.subtitle || "").trim();
+  return normalizeBook({
+    isbn,
+    title: subtitle && !title.includes(subtitle) ? `${title}：${subtitle}` : title,
+    authors: Array.isArray(item.author) ? item.author.map(cleanAuthor).filter(Boolean) : [],
+    publisher: item.pub_house || "",
+    published_date: item.pub_year || "",
+    cover_url: item.cover_image_url || "",
+    source: "NeoDB 中文书目"
+  });
+}
+
+// 直接查询 NeoDB 公共目录，为免注册模式提供中文书目资料。
+async function lookupNeoDb(isbn) {
+  const params = new URLSearchParams({ category: "book", query: isbn });
+  const response = await fetchWithTimeout(`https://neodb.social/api/catalog/search?${params}`);
+  if (!response.ok) return null;
+  const result = await response.json();
+  const items = Array.isArray(result?.data) ? result.data : [];
+  const item = items.find((entry) => normalizeIsbn(entry.isbn) === isbn) || items[0];
+  return normalizeNeoDbBook(isbn, item);
 }
 
 // 直接查询 Google Books，作为未配置 Supabase 时的零成本后备来源。
@@ -62,7 +105,7 @@ async function lookupOpenLibrary(isbn) {
 export async function lookupBookByIsbn(rawIsbn, accessToken = "") {
   const isbn = normalizeIsbn(rawIsbn);
   const errors = [];
-  for (const lookup of [(value) => lookupByBackend(value, accessToken), lookupGoogleBooks, lookupOpenLibrary]) {
+  for (const lookup of [(value) => lookupByBackend(value, accessToken), lookupNeoDb, lookupGoogleBooks, lookupOpenLibrary]) {
     try {
       const book = await lookup(isbn);
       if (book?.title) return book;
@@ -70,5 +113,6 @@ export async function lookupBookByIsbn(rawIsbn, accessToken = "") {
       errors.push(error.name === "AbortError" ? "查询超时" : error.message);
     }
   }
-  return normalizeBook({ isbn, source: "手动录入", errors });
+  const lookupStatus = errors.length ? "source-error" : "not-found";
+  return { ...normalizeBook({ isbn, source: "手动录入" }), lookup_status: lookupStatus, errors };
 }

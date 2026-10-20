@@ -3,6 +3,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { LocalStore } from "../assets/local-store.js";
 import { rowsToCsv } from "../assets/csv-export.js";
+import { normalizeNeoDbBook } from "../assets/book-lookup.js";
 import { isValidIsbn, normalizeIsbn, normalizeTags } from "../assets/utils.js";
 
 class MemoryStorage {
@@ -20,6 +21,23 @@ test("ISBN 清理和校验", () => {
   assert.equal(isValidIsbn("9787505756854"), true);
   assert.equal(isValidIsbn("0306406152"), true);
   assert.equal(isValidIsbn("9787505756855"), false);
+});
+
+// 验证中文书目接口字段能够组成完整的新增表单资料。
+test("NeoDB 中文书目字段映射", () => {
+  const book = normalizeNeoDbBook("9787522208183", {
+    display_title: "看见她们",
+    subtitle: "ADHD女性的困境",
+    author: ["(瑞士) 洛塔·博里·斯科格隆"],
+    pub_house: "华夏出版社",
+    pub_year: 2025,
+    cover_image_url: "https://example.com/cover.jpg"
+  });
+  assert.equal(book.title, "看见她们：ADHD女性的困境");
+  assert.deepEqual(book.authors, ["洛塔·博里·斯科格隆"]);
+  assert.equal(book.publisher, "华夏出版社");
+  assert.equal(book.published_date, "2025");
+  assert.equal(book.source, "NeoDB 中文书目");
 });
 
 // 验证标签去空白和不区分大小写去重。

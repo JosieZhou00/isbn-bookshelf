@@ -111,7 +111,9 @@ async function handleLookup() {
   state.lookupBook = book;
   fillBookForm(book, bookFields);
   elements.bookForm.classList.remove("hidden");
-  elements.lookupHint.textContent = book.title ? `已从${book.source || "书架"}取得资料，请确认后保存。` : "没有查到完整资料，请手动填写书名后保存。";
+  if (book.title) elements.lookupHint.textContent = `已从${book.source || "书架"}取得资料，请确认后保存。`;
+  else if (book.lookup_status === "source-error") elements.lookupHint.textContent = `部分查书来源暂时不可用；请稍后重试或手动填写。${book.errors?.[0] ? `（${book.errors[0]}）` : ""}`;
+  else elements.lookupHint.textContent = "已查询可用数据源，但没有找到完整资料；请手动填写书名后保存。";
   bookFields.title.focus();
 }
 

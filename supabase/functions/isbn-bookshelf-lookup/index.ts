@@ -36,6 +36,58 @@ function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json; charset=utf-8" } });
 }
 
+// 读取托管环境提供的公开 API key，兼容新 publishable key 与 legacy anon key。
+function getAllowedPublicKeys(): Set<string> {
+  const keys = new Set<string>();
+  const legacyKey = Deno.env.get("SUPABASE_ANON_KEY");
+  if (legacyKey) keys.add(legacyKey);
+  try {
+    const publishableKeys = JSON.parse(Deno.env.get("SUPABASE_PUBLISHABLE_KEYS") || "{}");
+    Object.values(publishableKeys).forEach((key) => {
+      if (typeof key === "string" && key) keys.add(key);
+    });
+  } catch (error) {
+    console.warn("无法解析 SUPABASE_PUBLISHABLE_KEYS", error);
+  }
+  return keys;
+}
+
+// 仅允许携带当前项目公开 key 的浏览器请求进入查询逻辑。
+function hasValidPublicKey(request: Request): boolean {
+  const requestKey = request.headers.get("apikey") || "";
+  return Boolean(requestKey && getAllowedPublicKeys().has(requestKey));
+}
+
+// 去掉作者名前容易出错的国籍前缀，保留可检索的人名主体。
+function cleanAuthor(value: unknown): string {
+  return String(value || "").replace(/^[（(][^）)]{1,12}[）)]\s*/, "").trim();
+}
+
+// 查询 NeoDB 公共目录，优先补充中文书名、作者、出版社与封面。
+async function lookupNeoDb(isbn: string): Promise<BookPayload | null> {
+  const params = new URLSearchParams({ category: "book", query: isbn });
+  const response = await fetch(`https://neodb.social/api/catalog/search?${params}`, {
+    signal: AbortSignal.timeout(7000),
+    headers: { Accept: "application/json" },
+  });
+  if (!response.ok) return null;
+  const result = await response.json();
+  const items = Array.isArray(result?.data) ? result.data as Array<Record<string, unknown>> : [];
+  const item = items.find((entry) => normalizeIsbn(String(entry.isbn || "")) === isbn) || items[0];
+  if (!item?.title && !item?.display_title) return null;
+  const title = String(item.display_title || item.title || "").trim();
+  const subtitle = String(item.subtitle || "").trim();
+  const authors = Array.isArray(item.author) ? item.author.map(cleanAuthor).filter(Boolean) : [];
+  return {
+    isbn,
+    title: subtitle && !title.includes(subtitle) ? `${title}：${subtitle}` : title,
+    authors,
+    publisher: String(item.pub_house || ""),
+    published_date: String(item.pub_year || ""),
+    cover_url: String(item.cover_image_url || ""),
+  };
+}
+
 // 从豆瓣搜索摘要中拆出作者、出版社和出版时间。
 function parseDoubanAbstract(abstract: string): Partial<BookPayload> {
   const parts = abstract.split("/").map((part) => part.trim()).filter(Boolean);
@@ -47,7 +99,7 @@ function parseDoubanAbstract(abstract: string): Partial<BookPayload> {
   };
 }
 
-// 从豆瓣搜索页内嵌的 window.__DATA__ 中读取结果。
+// 从豆瓣搜索页内嵌数据中读取结果。
 function parseDoubanSearchData(html: string): Record<string, unknown> | null {
   const match = html.match(/window\.__DATA__\s*=\s*(\{[\s\S]*?\});/);
   if (!match?.[1]) return null;
@@ -58,7 +110,7 @@ function parseDoubanSearchData(html: string): Record<string, unknown> | null {
   }
 }
 
-// 查询豆瓣公开搜索页，优先补充中文图书资料。
+// 查询豆瓣公开搜索页，作为中文书目的后备来源。
 async function lookupDoubanWeb(isbn: string): Promise<BookPayload | null> {
   const params = new URLSearchParams({ search_text: isbn });
   const response = await fetch(`https://search.douban.com/book/subject_search?${params}`, {
@@ -110,8 +162,7 @@ async function lookupDoubanApi(isbn: string): Promise<BookPayload | null> {
   const response = await fetch(endpoint, { signal: AbortSignal.timeout(5000) });
   if (!response.ok) return null;
   const result = await response.json();
-  const data = result.book || result.data || result;
-  return normalizeDomesticBook(isbn, data);
+  return normalizeDomesticBook(isbn, result.book || result.data || result);
 }
 
 // 调用可选的极速数据 ISBN API。
@@ -175,6 +226,7 @@ async function lookupOpenLibrary(isbn: string): Promise<BookPayload | null> {
 // 依次查询数据源，并返回首个包含书名的结果。
 async function lookupBook(isbn: string): Promise<{ source: string; book: BookPayload } | null> {
   const sources: Array<[string, (value: string) => Promise<BookPayload | null>]> = [
+    ["NeoDB 中文书目", lookupNeoDb],
     ["豆瓣网页检索", lookupDoubanWeb],
     ["豆瓣 API", lookupDoubanApi],
     ["极速数据", lookupJisu],
@@ -196,6 +248,7 @@ async function lookupBook(isbn: string): Promise<{ source: string; book: BookPay
 // 处理跨域预检和 ISBN 查询请求。
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (!hasValidPublicKey(request)) return json({ found: false, message: "缺少有效的公开 API key" }, 401);
   if (request.method !== "GET") return json({ found: false, message: "仅支持 GET 请求" }, 405);
   const isbn = normalizeIsbn(new URL(request.url).searchParams.get("isbn"));
   if (!isValidIsbn(isbn)) return json({ found: false, message: "ISBN 格式或校验位不正确" }, 400);

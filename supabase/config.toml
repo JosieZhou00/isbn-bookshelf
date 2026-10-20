@@ -257,9 +257,9 @@ template = "Your code is {{ .Code }}"
 # Controls the minimum amount of time that must pass before sending another sms otp.
 max_frequency = "5s"
 
-# ISBN 查询允许本机模式通过公开 key 调用，但仍保留平台级 key 校验。
-[functions.book-lookup]
-verify_jwt = true
+# ISBN 查询允许本机模式通过公开 key 调用；函数内部校验当前项目的 publishable/anon key。
+[functions.isbn-bookshelf-lookup]
+verify_jwt = false
 
 # Use pre-defined map of phone number to OTP for testing.
 # [auth.sms.test_otp]

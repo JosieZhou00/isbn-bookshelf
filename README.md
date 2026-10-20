@@ -13,7 +13,7 @@
 
 - 手机相机扫描 EAN-13 ISBN 条码，浏览器不支持 `BarcodeDetector` 时使用固定版本 ZXing。
 - 手动输入并校验 ISBN-10、ISBN-13。
-- 配置 Supabase 后，后台依次尝试中文和公开图书来源；未配置时直接尝试 Google Books、Open Library。
+- 免配置直接查询 NeoDB 中文书目、Google Books 和 Open Library；也可部署独立 Supabase 聚合代理，增加豆瓣或自有国内 ISBN 接口。
 - 检索不到时允许手动填写书名、作者、出版社、出版时间和封面。
 - 本机或云端保存，单个书架内同一 ISBN 不重复创建。
 - 添加多个标签，按标签筛选。
@@ -48,13 +48,13 @@ npm run start
 npm run check
 ```
 
-## 启用邮箱云端书架
+## 可选：启用邮箱云端书架和聚合代理
 
 1. 新建 Supabase 项目。
 2. 使用 `supabase db push` 应用迁移。
-3. 部署 `book-lookup` Edge Function。
+3. 如需聚合代理，部署 `isbn-bookshelf-lookup` Edge Function；只使用公开中文书目时可跳过。
 4. 启用邮箱登录，并将邮件模板配置为显示 `{{ .Token }}`。
-5. 设置 `SUPABASE_URL`、`SUPABASE_PUBLISHABLE_KEY` 和 `APP_URL`。
+5. 分别设置书架存储和查书后端的公开变量；两者可以使用不同的 Supabase 项目。
 6. 执行 `npm run build:config` 生成浏览器公开配置。
 
 完整步骤见 [部署说明](docs/部署说明.md)。
@@ -72,14 +72,15 @@ assets/
   csv-export.js          CSV 导出
 supabase/
   migrations/            书架表和 RLS
-  functions/book-lookup/ ISBN 聚合查询函数
+  functions/isbn-bookshelf-lookup/ ISBN 聚合查询函数
 docs/                    部署与隐私说明
 tests/                   核心逻辑测试
 ```
 
 ## 数据与安全
 
-- 前端只使用 Supabase publishable key；它本身是公开配置，数据权限由 RLS 控制。
+- 前端只使用 Supabase publishable key；它本身是公开配置，书架数据权限由 RLS 控制。
+- 查书后端与云端书架分开配置；免注册本机模式默认可直接查询 NeoDB 中文书目。
 - 云端表只向 `authenticated` 角色开放，并在每个操作中校验 `auth.uid() = user_id`。
 - `.env`、`assets/config.js`、Supabase 临时目录已加入 `.gitignore`。
 - 第三方图书接口密钥只放在 Edge Function secrets 中。
@@ -89,7 +90,7 @@ tests/                   核心逻辑测试
 
 ## 已知限制
 
-- 免费图书接口对中文图书的覆盖不完整，结果仍需用户确认。
+- 免费图书接口对中文图书的覆盖仍可能不完整，聚合结果需要用户确认。
 - iPhone 和大部分手机浏览器只允许 HTTPS 页面访问相机。
 - 本机模式依赖浏览器网站数据；清除数据或更换设备前应先导出。
 - 首版看板通过状态选择框移动图书，没有实现触屏拖拽。
@@ -99,6 +100,7 @@ tests/                   核心逻辑测试
 - [Supabase 邮箱验证码登录](https://supabase.com/docs/guides/auth/auth-email-passwordless)
 - [Supabase Row Level Security](https://supabase.com/docs/guides/database/postgres/row-level-security)
 - [Supabase Edge Functions 鉴权请求头](https://supabase.com/docs/guides/functions/auth-headers)
+- [NeoDB API 开发者入口](https://neodb.social/developer/)
 
 ## License
 

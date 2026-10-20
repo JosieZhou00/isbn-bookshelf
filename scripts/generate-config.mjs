@@ -23,8 +23,13 @@ const fileEnv = existsSync(envPath) ? parseEnv(readFileSync(envPath, "utf8")) : 
 const config = {
   supabaseUrl: readConfigValue("SUPABASE_URL", fileEnv),
   supabasePublishableKey: readConfigValue("SUPABASE_PUBLISHABLE_KEY", fileEnv),
+  lookupSupabaseUrl: readConfigValue("LOOKUP_SUPABASE_URL", fileEnv),
+  lookupSupabasePublishableKey: readConfigValue("LOOKUP_SUPABASE_PUBLISHABLE_KEY", fileEnv),
+  lookupFunctionName: readConfigValue("LOOKUP_FUNCTION_NAME", fileEnv) || "isbn-bookshelf-lookup",
   appUrl: readConfigValue("APP_URL", fileEnv)
 };
 
 writeFileSync(outputPath, `// 本文件由 scripts/generate-config.mjs 生成，不应提交到 Git。\nwindow.ISBN_BOOKSHELF_CONFIG = ${JSON.stringify(config, null, 2)};\n`);
-console.log(config.supabaseUrl && config.supabasePublishableKey ? "已生成云端配置。" : "已生成本机模式配置；未填写 Supabase 变量。 ");
+const storageMessage = config.supabaseUrl && config.supabasePublishableKey ? "云端书架已配置" : "本机书架模式";
+const lookupMessage = config.lookupSupabaseUrl && config.lookupSupabasePublishableKey ? "聚合查书代理已配置" : "使用公开中文书目（未配置聚合代理）";
+console.log(`已生成配置：${storageMessage}，${lookupMessage}。`);

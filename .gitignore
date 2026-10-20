@@ -1,0 +1,8 @@
+# 本文件排除本机配置、依赖和 Supabase 临时状态，避免密钥进入版本库。
+.DS_Store
+.env
+assets/config.js
+node_modules/
+output/
+supabase/.branches/
+supabase/.temp/

@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#23483e" />
+    <meta name="description" content="手机扫描 ISBN，建立想读、在读和已读书架。可免注册保存在本机，也可用邮箱同步。" />
+    <title>扫书架</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./assets/icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./assets/styles.css" />
+    <script src="./assets/config.js"></script>
+    <script type="module" src="./assets/app.js"></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="#add" aria-label="返回添加图书">
+        <span class="brand-mark" aria-hidden="true">书</span>
+        <span><strong>扫书架</strong><small>ISBN Bookshelf</small></span>
+      </a>
+      <div class="account-area">
+        <span class="mode-badge" id="modeBadge">本机书架</span>
+        <button class="ghost-button" id="authButton" type="button">邮箱登录</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div>
+          <p class="eyebrow">SCAN · SAVE · READ</p>
+          <h1>扫一下，把书放进自己的书架。</h1>
+          <p>无需注册即可保存在当前浏览器；邮箱登录后，可在不同设备同步。</p>
+        </div>
+        <div class="hero-count" aria-live="polite">
+          <strong id="totalCount">0</strong>
+          <span>本藏书</span>
+        </div>
+      </section>
+
+      <nav class="main-nav" aria-label="主要功能">
+        <button class="nav-button active" data-view="add" type="button">添加</button>
+        <button class="nav-button" data-view="shelf" type="button">书架</button>
+        <button class="nav-button" data-view="board" type="button">看板</button>
+        <button class="nav-button" data-view="export" type="button">导出</button>
+      </nav>
+
+      <section class="view active" id="add" aria-labelledby="addTitle">
+        <div class="panel lookup-panel">
+          <div class="section-heading">
+            <div><p class="step">01</p><h2 id="addTitle">扫描或输入 ISBN</h2></div>
+            <button class="camera-button" id="cameraButton" type="button">打开相机</button>
+          </div>
+          <form class="isbn-form" id="isbnForm">
+            <label class="sr-only" for="isbnInput">ISBN</label>
+            <input id="isbnInput" inputmode="numeric" autocomplete="off" placeholder="例如 9787505756854" required />
+            <button class="primary-button" type="submit">检索图书</button>
+          </form>
+          <p class="hint" id="lookupHint">支持 ISBN-10 和 ISBN-13，空格和连字符会自动清理。</p>
+        </div>
+
+        <form class="panel book-form hidden" id="bookForm">
+          <div class="section-heading compact">
+            <div><p class="step">02</p><h2>确认图书资料</h2></div>
+            <span class="source-badge" id="sourceBadge">手动录入</span>
+          </div>
+          <div class="book-editor">
+            <div class="cover-preview" id="coverPreview"><span>暂无封面</span></div>
+            <div class="form-grid">
+              <label>书名<input id="bookTitle" name="title" required /></label>
+              <label>ISBN<input id="bookIsbn" name="isbn" readonly required /></label>
+              <label>作者<input id="bookAuthors" name="authors" placeholder="多位作者用逗号分隔" /></label>
+              <label>出版社<input id="bookPublisher" name="publisher" /></label>
+              <label>出版时间<input id="bookPublishedDate" name="published_date" /></label>
+              <label>封面地址<input id="bookCoverUrl" name="cover_url" type="url" placeholder="https://" /></label>
+              <label class="wide">标签<input id="bookTags" name="tags" placeholder="文学，法律，待读" /></label>
+              <label class="wide">阅读状态
+                <select id="bookStatus" name="reading_status">
+                  <option value="want">想读</option>
+                  <option value="reading">在读</option>
+                  <option value="read">已读</option>
+                </select>
+              </label>
+              <label class="wide">备注<textarea id="bookNotes" name="notes" rows="3" placeholder="可选"></textarea></label>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="ghost-button" id="cancelEditButton" type="button">取消</button>
+            <button class="primary-button" type="submit">保存到书架</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="view" id="shelf" aria-labelledby="shelfTitle">
+        <div class="section-heading shelf-heading">
+          <div><p class="step">YOUR BOOKS</p><h2 id="shelfTitle">我的书架</h2></div>
+          <div class="shelf-controls">
+            <input id="searchInput" type="search" placeholder="搜索书名、作者或 ISBN" aria-label="搜索书架" />
+            <select id="tagFilter" aria-label="按标签筛选"><option value="">全部标签</option></select>
+            <select id="sortSelect" aria-label="排序方式">
+              <option value="newest">最近添加</option>
+              <option value="oldest">最早添加</option>
+              <option value="title">按书名</option>
+            </select>
+          </div>
+        </div>
+        <div class="book-grid" id="bookGrid"></div>
+        <div class="empty-state hidden" id="shelfEmpty"><strong>书架还是空的</strong><span>扫描 ISBN 或手动输入，添加第一本书。</span></div>
+      </section>
+
+      <section class="view" id="board" aria-labelledby="boardTitle">
+        <div class="section-heading shelf-heading">
+          <div><p class="step">READING FLOW</p><h2 id="boardTitle">阅读看板</h2></div>
+          <select id="boardTagFilter" aria-label="按标签筛选看板"><option value="">全部标签</option></select>
+        </div>
+        <div class="board" id="readingBoard"></div>
+      </section>
+
+      <section class="view" id="export" aria-labelledby="exportTitle">
+        <div class="panel export-panel">
+          <p class="step">BACKUP</p>
+          <h2 id="exportTitle">导出书架数据</h2>
+          <p>导出当前模式下的全部图书。CSV 可以用 Excel、Numbers 或其他表格软件打开。</p>
+          <button class="primary-button" id="exportButton" type="button">导出 CSV</button>
+          <p class="privacy-note" id="storageNote">本机模式的数据只保存在当前浏览器中，请定期导出备份。</p>
+        </div>
+      </section>
+    </main>
+
+    <dialog id="scannerDialog" class="scanner-dialog">
+      <div class="dialog-heading"><strong>扫描 ISBN 条码</strong><button id="closeScannerButton" type="button" aria-label="关闭">×</button></div>
+      <video id="scannerVideo" playsinline></video>
+      <p id="scannerHint">请把 ISBN 条码放到取景框中。</p>
+    </dialog>
+
+    <dialog id="authDialog" class="auth-dialog">
+      <form method="dialog" class="dialog-heading"><strong>邮箱云端书架</strong><button type="submit" aria-label="关闭">×</button></form>
+      <div id="signedOutPanel">
+        <p>输入邮箱获取六位验证码。首次登录会自动创建账号。</p>
+        <form id="loginForm" class="auth-form">
+          <label>邮箱<input id="loginEmail" type="email" autocomplete="email" required /></label>
+          <label class="hidden" id="codeField">验证码<input id="loginCode" inputmode="numeric" autocomplete="one-time-code" /></label>
+          <button class="primary-button" id="loginButton" type="submit">发送验证码</button>
+        </form>
+        <p class="hint" id="authHint">登录后显示云端书架；本机书架不会自动上传。</p>
+      </div>
+      <div class="hidden signed-in-panel" id="signedInPanel">
+        <p id="accountEmail"></p>
+        <p>当前正在使用云端书架。退出后会回到这台设备的本机书架。</p>
+        <button class="danger-button" id="signOutButton" type="button">退出登录</button>
+      </div>
+    </dialog>
+
+    <dialog id="editDialog" class="edit-dialog">
+      <form id="editForm">
+        <div class="dialog-heading"><strong>编辑图书</strong><button id="closeEditButton" type="button" aria-label="关闭">×</button></div>
+        <input id="editId" type="hidden" />
+        <label>书名<input id="editTitle" required /></label>
+        <label>作者<input id="editAuthors" /></label>
+        <label>标签<input id="editTags" placeholder="多个标签用逗号分隔" /></label>
+        <label>阅读状态
+          <select id="editStatus"><option value="want">想读</option><option value="reading">在读</option><option value="read">已读</option></select>
+        </label>
+        <label>备注<textarea id="editNotes" rows="3"></textarea></label>
+        <div class="form-actions"><button class="danger-button" id="deleteBookButton" type="button">删除</button><button class="primary-button" type="submit">保存修改</button></div>
+      </form>
+    </dialog>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </body>
+</html>

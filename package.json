@@ -1,0 +1,13 @@
+{
+  "name": "isbn-bookshelf",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:config": "node scripts/generate-config.mjs",
+    "start": "npm run build:config && python3 -m http.server 5174",
+    "test": "node --test",
+    "test:syntax": "node --check assets/app.js && node --check assets/ui.js && node --check assets/local-store.js && node --check assets/supabase-store.js && node --check assets/book-lookup.js && node --check assets/scanner.js && node --check assets/csv-export.js && node --check assets/utils.js",
+    "check": "npm run test:syntax && npm test"
+  }
+}

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="扫书架图标">
+  <rect width="512" height="512" rx="112" fill="#23483e"/>
+  <path d="M116 116h82c33 0 58 11 74 34 16-23 41-34 74-34h50v264h-52c-30 0-52 9-72 28-20-19-42-28-72-28h-84V116Z" fill="#f7f1e7"/>
+  <path d="M272 150v258M198 116v264" fill="none" stroke="#d89454" stroke-width="22"/>
+  <path d="M316 218h42M316 264h42M316 310h42" stroke="#23483e" stroke-width="15" stroke-linecap="round"/>
+</svg>

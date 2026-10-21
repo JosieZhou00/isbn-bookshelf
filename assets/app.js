@@ -1,13 +1,13 @@
 // 本文件协调扫码、查书、登录、存储、书架筛选、阅读看板和导出交互。
-import { lookupBookByIsbn } from "./book-lookup.js?v=13";
-import { exportBooks } from "./csv-export.js?v=13";
-import { DemoStore } from "./demo-store.js?v=13";
-import { applyTranslations, sourceLabel, t, toggleLanguage } from "./i18n.js?v=13";
-import { LocalStore } from "./local-store.js?v=13";
-import { CameraScanner } from "./scanner.js?v=13";
-import { SupabaseStore } from "./supabase-store.js?v=13";
-import { fillBookForm, renderBoard, renderCoverPreview, renderShelf, renderTagFilters } from "./ui.js?v=13";
-import { hasCloudConfig, isValidIsbn, normalizeBook, normalizeIsbn, normalizeTags } from "./utils.js?v=13";
+import { lookupBookByIsbn } from "./book-lookup.js?v=14";
+import { exportBooks } from "./csv-export.js?v=14";
+import { DemoStore } from "./demo-store.js?v=14";
+import { applyTranslations, sourceLabel, t, toggleLanguage } from "./i18n.js?v=14";
+import { LocalStore } from "./local-store.js?v=14";
+import { CameraScanner } from "./scanner.js?v=14";
+import { SupabaseStore } from "./supabase-store.js?v=14";
+import { fillBookForm, renderBoard, renderCoverPreview, renderShelf, renderTagFilters } from "./ui.js?v=14";
+import { hasCloudConfig, isValidIsbn, normalizeBook, normalizeIsbn, normalizeTags } from "./utils.js?v=14";
 
 const $ = (selector) => document.querySelector(selector);
 const elements = {
@@ -292,7 +292,14 @@ function bindEvents() {
   });
 }
 
-// 初始化本机书架、可选云端客户端、路由和 Service Worker。
+// 注册 Service Worker，并主动检查更新，避免手机长期停留在旧版资源。
+async function registerServiceWorker() {
+  if (!("serviceWorker" in navigator)) return;
+  const registration = await navigator.serviceWorker.register("./sw.js", { updateViaCache: "none" });
+  await registration.update();
+}
+
+// 初始化本机书架、可选云端客户端和路由。
 async function init() {
   applyTranslations();
   bindEvents();
@@ -310,7 +317,7 @@ async function init() {
   renderAccountState();
   const initialView = location.hash.slice(1);
   if (["add", "shelf", "board", "export"].includes(initialView)) activateView(initialView);
-  if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch((error) => console.warn(t("log.serviceWorker"), error));
+  registerServiceWorker().catch((error) => console.warn(t("log.serviceWorker"), error));
 }
 
 init().catch(showError);

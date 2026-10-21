@@ -89,7 +89,7 @@ npm run build
 1. 新建 Supabase 项目。
 2. 使用 `supabase db push` 应用迁移。
 3. 启用邮箱登录，并将正式站点加入允许的回调地址。免费版使用 Supabase 默认邮件登录链接。
-4. 部署 `isbn-bookshelf-lookup` Edge Function，让手机通过聚合后端查询中文书目；函数包含缓存、来源限制和频率保护。
+4. 部署 `isbn-bookshelf-lookup` Edge Function，让手机通过聚合后端查询中文书目和受限代理封面；函数包含缓存、来源限制、图片校验和频率保护。
 5. 将公开配置写入 `.env`，执行 `npm run build:config`。
 
 完整步骤见 [部署说明](docs/部署说明.md)。第三方接口密钥只能存放在 Edge Function secrets 中，不应写入前端或提交到 GitHub。

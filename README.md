@@ -87,7 +87,7 @@ For a first deployment, set the repository's **Settings → Pages → Source** t
 1. Create a Supabase project.
 2. Apply the migration with `supabase db push`.
 3. Enable email sign-in and add the production site to the allowed redirect URLs. The Free Plan uses Supabase's default email sign-in link.
-4. Deploy the `isbn-bookshelf-lookup` Edge Function so mobile browsers can use the aggregated Chinese-book lookup; the function includes caching, origin checks, and rate limiting.
+4. Deploy the `isbn-bookshelf-lookup` Edge Function so mobile browsers can use the aggregated Chinese-book lookup and restricted cover proxy; the function includes caching, origin checks, image validation, and rate limiting.
 5. Add the public values to `.env`, then run `npm run build:config`.
 
 See the [Chinese deployment guide](docs/部署说明.md) for the full setup. Third-party API keys belong in Edge Function secrets and must not be committed or exposed in frontend code.

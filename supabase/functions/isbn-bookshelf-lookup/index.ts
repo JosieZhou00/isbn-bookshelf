@@ -1,4 +1,7 @@
-// 本文件运行在 Supabase Edge Functions，按 ISBN 聚合图书数据，并提供缓存、来源限制与频率保护。
+// 本文件运行在 Supabase Edge Functions，按 ISBN 聚合图书数据，并提供缓存、封面代理与频率保护。
+import { COVER_PROXY_CONFIG } from "./config.ts";
+import { fetchCoverImage, isAllowedCoverUrl } from "./cover-proxy.ts";
+
 const DEFAULT_ALLOWED_ORIGINS = [
   "https://josiezhou00.github.io",
   "http://127.0.0.1:5174",
@@ -121,28 +124,26 @@ function getAdminHeaders(extraHeaders: Record<string, string> = {}): Record<stri
 }
 
 // 对客户端网络标识做不可逆哈希，限流表不保存原始 IP。
-async function getClientHash(request: Request): Promise<string> {
+async function getClientHash(request: Request, scope = "lookup"): Promise<string> {
   const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
   const client = forwarded || request.headers.get("cf-connecting-ip") || request.headers.get("x-real-ip") || "unknown";
   const agent = request.headers.get("user-agent") || "unknown";
   const salt = Deno.env.get("RATE_LIMIT_SALT") || Deno.env.get("SUPABASE_URL") || "isbn-bookshelf";
-  const bytes = new TextEncoder().encode(`${salt}:${client}:${agent.slice(0, 160)}`);
+  const bytes = new TextEncoder().encode(`${salt}:${scope}:${client}:${agent.slice(0, 160)}`);
   const digest = await crypto.subtle.digest("SHA-256", bytes);
   return [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, "0")).join("");
 }
 
-// 调用数据库中的原子计数函数，限制同一客户端每分钟的查询次数。
-async function consumeLookupQuota(request: Request): Promise<boolean> {
+// 调用数据库中的原子计数函数，按用途限制同一客户端每分钟的请求次数。
+async function consumeRequestQuota(request: Request, limit: number, scope: string): Promise<boolean> {
   const projectUrl = Deno.env.get("SUPABASE_URL") || "";
   const headers = getAdminHeaders({ "Content-Type": "application/json" });
   if (!projectUrl || !headers) return true;
-  const configuredLimit = Number(Deno.env.get("LOOKUP_RATE_LIMIT_PER_MINUTE") || DEFAULT_RATE_LIMIT);
-  const limit = Number.isFinite(configuredLimit) ? Math.max(1, Math.min(configuredLimit, 300)) : DEFAULT_RATE_LIMIT;
   const response = await fetch(`${projectUrl.replace(/\/$/, "")}/rest/v1/rpc/consume_book_lookup_quota`, {
     method: "POST",
     headers,
     body: JSON.stringify({
-      p_client_hash: await getClientHash(request),
+      p_client_hash: await getClientHash(request, scope),
       p_window_start: new Date().toISOString(),
       p_limit: limit,
     }),
@@ -155,17 +156,31 @@ async function consumeLookupQuota(request: Request): Promise<boolean> {
   return Boolean(await response.json());
 }
 
-// 读取仍在有效期内的 ISBN 查询缓存。
-async function readLookupCache(isbn: string): Promise<CacheRecord | null> {
+// 限制同一客户端每分钟发起的书目查询次数。
+async function consumeLookupQuota(request: Request): Promise<boolean> {
+  const configured = Number(Deno.env.get("LOOKUP_RATE_LIMIT_PER_MINUTE") || DEFAULT_RATE_LIMIT);
+  const limit = Number.isFinite(configured) ? Math.max(1, Math.min(configured, 300)) : DEFAULT_RATE_LIMIT;
+  return consumeRequestQuota(request, limit, "lookup");
+}
+
+// 单独限制封面代理请求，避免图片加载占用书目查询配额。
+async function consumeCoverQuota(request: Request): Promise<boolean> {
+  const configured = Number(Deno.env.get("COVER_RATE_LIMIT_PER_MINUTE") || COVER_PROXY_CONFIG.rateLimitPerMinute);
+  const limit = Number.isFinite(configured) ? Math.max(1, Math.min(configured, 600)) : COVER_PROXY_CONFIG.rateLimitPerMinute;
+  return consumeRequestQuota(request, limit, "cover");
+}
+
+// 读取 ISBN 查询缓存；封面代理可读取过期记录以维持已保存图书的图片。
+async function readLookupCache(isbn: string, requireFresh = true): Promise<CacheRecord | null> {
   const projectUrl = Deno.env.get("SUPABASE_URL") || "";
   const headers = getAdminHeaders();
   if (!projectUrl || !headers) return null;
   const params = new URLSearchParams({
     select: "found,source,book",
     isbn: `eq.${isbn}`,
-    expires_at: `gt.${new Date().toISOString()}`,
     limit: "1",
   });
+  if (requireFresh) params.set("expires_at", `gt.${new Date().toISOString()}`);
   const response = await fetch(`${projectUrl.replace(/\/$/, "")}/rest/v1/book_lookup_cache?${params}`, {
     headers,
     signal: AbortSignal.timeout(3000),
@@ -176,6 +191,39 @@ async function readLookupCache(isbn: string): Promise<CacheRecord | null> {
   }
   const rows = await response.json();
   return Array.isArray(rows) && rows[0] ? rows[0] as CacheRecord : null;
+}
+
+// 把可信的原始封面地址替换为当前 Edge Function 的代理地址。
+function withProxyCover(request: Request, isbn: string, book: BookPayload | null): BookPayload | null {
+  if (!book?.cover_url || !isAllowedCoverUrl(book.cover_url)) return book;
+  const proxyUrl = new URL(request.url);
+  proxyUrl.search = "";
+  proxyUrl.searchParams.set("asset", "cover");
+  proxyUrl.searchParams.set("isbn", isbn);
+  return { ...book, cover_url: proxyUrl.href };
+}
+
+// 从缓存读取受信任封面地址，并把图片内容转发给无法直连来源站的手机。
+async function serveCover(request: Request, isbn: string): Promise<Response> {
+  try {
+    if (!await consumeCoverQuota(request)) {
+      return json(request, { message: "封面请求过于频繁，请稍后重试" }, 429, { "Retry-After": "60" });
+    }
+  } catch (error) {
+    console.warn("封面限流服务暂时不可用", error);
+  }
+  const cached = await readLookupCache(isbn, false);
+  const coverUrl = cached?.found ? String(cached.book?.cover_url || "") : "";
+  if (!coverUrl || !isAllowedCoverUrl(coverUrl)) return json(request, { message: "该 ISBN 暂无可代理的封面" }, 404);
+  try {
+    const image = await fetchCoverImage(coverUrl);
+    const headers = new Headers(image.headers);
+    Object.entries(getCorsHeaders(request)).forEach(([name, value]) => headers.set(name, value));
+    return new Response(image.body, { status: image.status, headers });
+  } catch (error) {
+    console.warn("封面代理读取失败", error);
+    return json(request, { message: "封面暂时无法读取" }, 502);
+  }
 }
 
 // 写入查询结果；已找到的书缓存三十天，未找到的 ISBN 缓存六小时。
@@ -400,10 +448,12 @@ async function lookupBook(isbn: string): Promise<{ source: string; book: BookPay
 Deno.serve(async (request) => {
   if (!isAllowedOrigin(request)) return json(request, { found: false, message: "该网页来源无权调用查书服务" }, 403);
   if (request.method === "OPTIONS") return new Response("ok", { headers: getCorsHeaders(request) });
-  if (!hasValidPublicKey(request)) return json(request, { found: false, message: "缺少有效的公开 API key" }, 401);
   if (request.method !== "GET") return json(request, { found: false, message: "仅支持 GET 请求" }, 405);
-  const isbn = normalizeIsbn(new URL(request.url).searchParams.get("isbn"));
+  const requestUrl = new URL(request.url);
+  const isbn = normalizeIsbn(requestUrl.searchParams.get("isbn"));
   if (!isValidIsbn(isbn)) return json(request, { found: false, message: "ISBN 格式或校验位不正确" }, 400);
+  if (requestUrl.searchParams.get("asset") === "cover") return serveCover(request, isbn);
+  if (!hasValidPublicKey(request)) return json(request, { found: false, message: "缺少有效的公开 API key" }, 401);
   try {
     if (!await consumeLookupQuota(request)) {
       return json(request, { found: false, message: "查询过于频繁，请一分钟后再试" }, 429, { "Retry-After": "60" });
@@ -414,7 +464,7 @@ Deno.serve(async (request) => {
   try {
     const cached = await readLookupCache(isbn);
     if (cached) {
-      return json(request, { found: cached.found, source: cached.source, book: cached.book || { isbn }, cached: true }, 200, {
+      return json(request, { found: cached.found, source: cached.source, book: withProxyCover(request, isbn, cached.book) || { isbn }, cached: true }, 200, {
         "Cache-Control": "public, max-age=300, s-maxage=3600",
       });
     }
@@ -430,7 +480,7 @@ Deno.serve(async (request) => {
   } catch (error) {
     console.warn("ISBN 查询结果未能写入缓存", error);
   }
-  return json(request, { found: cacheValue.found, source: cacheValue.source, book: cacheValue.book, cached: false }, 200, {
+  return json(request, { found: cacheValue.found, source: cacheValue.source, book: withProxyCover(request, isbn, cacheValue.book), cached: false }, 200, {
     "Cache-Control": "public, max-age=300, s-maxage=3600",
   });
 });

@@ -86,7 +86,7 @@ For a first deployment, set the repository's **Settings → Pages → Source** t
 
 1. Create a Supabase project.
 2. Apply the migration with `supabase db push`.
-3. Enable email sign-in and add the production site to the allowed redirect URLs. The Free Plan uses Supabase's default email sign-in link.
+3. Enable email sign-in and add the production site to the allowed redirect URLs. With Supabase's default mail service, sign-in email is limited to organization member addresses. On iPhone, open the Magic Link in Safari rather than a mail app's built-in browser.
 4. Deploy the `isbn-bookshelf-lookup` Edge Function so mobile browsers can use the aggregated Chinese-book lookup and restricted cover proxy; the function includes caching, origin checks, image validation, and rate limiting.
 5. Add the public values to `.env`, then run `npm run build:config`.
 
@@ -101,7 +101,7 @@ assets/
   book-lookup.js         ISBN lookup and manual fallback
   local-store.js         Account-free browser storage
   demo-store.js          In-memory two-book demo
-  supabase-store.js      Email sign-in and cloud storage
+  supabase-store.js      Email-link sign-in and cloud storage
   scanner.js             Mobile barcode scanning
   ui.js                  Shelf and reading-board rendering
   csv-export.js          CSV export

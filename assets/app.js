@@ -1,13 +1,13 @@
 // 本文件协调扫码、查书、登录、存储、书架筛选、阅读看板和导出交互。
 import { lookupBookByIsbn } from "./book-lookup.js?v=17";
-import { exportBooks } from "./csv-export.js?v=14";
-import { DemoStore } from "./demo-store.js?v=14";
-import { applyTranslations, sourceLabel, t, toggleLanguage } from "./i18n.js?v=14";
-import { LocalStore } from "./local-store.js?v=14";
-import { CameraScanner } from "./scanner.js?v=14";
-import { SupabaseStore } from "./supabase-store.js?v=14";
-import { fillBookForm, renderBoard, renderCoverPreview, renderShelf, renderTagFilters } from "./ui.js?v=14";
-import { hasCloudConfig, isValidIsbn, normalizeBook, normalizeIsbn, normalizeTags } from "./utils.js?v=14";
+import { exportBooks } from "./csv-export.js?v=18";
+import { DemoStore } from "./demo-store.js?v=18";
+import { applyTranslations, sourceLabel, t, toggleLanguage } from "./i18n.js?v=18";
+import { LocalStore } from "./local-store.js?v=18";
+import { CameraScanner } from "./scanner.js?v=18";
+import { SupabaseStore } from "./supabase-store.js?v=18";
+import { fillBookForm, renderBoard, renderCoverPreview, renderShelf, renderTagFilters } from "./ui.js?v=18";
+import { hasCloudConfig, isValidIsbn, normalizeBook, normalizeIsbn, normalizeTags } from "./utils.js?v=18";
 
 const $ = (selector) => document.querySelector(selector);
 const elements = {
@@ -218,7 +218,7 @@ async function handleDeleteBook() {
   toast(t("toast.deleted"));
 }
 
-// 向邮箱发送登录链接；用户点击邮件链接后由 Supabase 自动恢复会话。
+// 向邮箱发送登录链接；用户应在目标浏览器中打开链接以恢复会话。
 async function handleLogin(event) {
   event.preventDefault();
   if (!state.cloudStore) throw new Error(t("error.cloudNotConfigured"));

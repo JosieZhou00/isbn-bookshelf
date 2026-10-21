@@ -88,7 +88,7 @@ npm run build
 
 1. 新建 Supabase 项目。
 2. 使用 `supabase db push` 应用迁移。
-3. 启用邮箱登录，并将正式站点加入允许的回调地址。免费版使用 Supabase 默认邮件登录链接。
+3. 启用邮箱登录，并将正式站点加入允许的回调地址。使用 Supabase 默认邮件服务时，登录邮件只发给组织成员邮箱；iPhone 上应在 Safari 中打开 Magic Link，不要直接使用邮件 App 的内置浏览器。
 4. 部署 `isbn-bookshelf-lookup` Edge Function，让手机通过聚合后端查询中文书目和受限代理封面；函数包含缓存、来源限制、图片校验和频率保护。
 5. 将公开配置写入 `.env`，执行 `npm run build:config`。
 
@@ -103,7 +103,7 @@ assets/
   book-lookup.js         ISBN 查询与查无结果处理
   local-store.js         免注册本机数据源
   demo-store.js          两本书的内存演示数据源
-  supabase-store.js      邮箱登录和云端数据源
+  supabase-store.js      邮箱链接登录和云端数据源
   scanner.js             手机条码识别
   ui.js                  书架与阅读看板渲染
   csv-export.js          CSV 导出

@@ -1,5 +1,6 @@
 // 本文件集中保存 ISBN 查书函数的封面代理配置，供代理模块读取。
 export const COVER_PROXY_CONFIG = {
+  functionName: "isbn-bookshelf-lookup",
   allowedHosts: [
     "neodb.social",
     "covers.openlibrary.org",

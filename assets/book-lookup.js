@@ -26,7 +26,7 @@ export function getLookupBackendConfig() {
 async function lookupByBackend(isbn, accessToken = "") {
   const backend = getLookupBackendConfig();
   if (!backend.url || !backend.key) return null;
-  const params = new URLSearchParams({ isbn, client: "web-cover-proxy-v1" });
+  const params = new URLSearchParams({ isbn, client: "web-cover-proxy-v2" });
   const endpoint = `${backend.url.replace(/\/$/, "")}/functions/v1/${encodeURIComponent(backend.functionName)}?${params}`;
   const headers = { apikey: backend.key };
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;

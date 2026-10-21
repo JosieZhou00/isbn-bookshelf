@@ -1,5 +1,5 @@
 // 本文件协调扫码、查书、登录、存储、书架筛选、阅读看板和导出交互。
-import { lookupBookByIsbn } from "./book-lookup.js?v=15";
+import { lookupBookByIsbn } from "./book-lookup.js?v=16";
 import { exportBooks } from "./csv-export.js?v=14";
 import { DemoStore } from "./demo-store.js?v=14";
 import { applyTranslations, sourceLabel, t, toggleLanguage } from "./i18n.js?v=14";

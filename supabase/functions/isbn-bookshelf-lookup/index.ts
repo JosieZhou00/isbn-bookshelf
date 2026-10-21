@@ -196,8 +196,8 @@ async function readLookupCache(isbn: string, requireFresh = true): Promise<Cache
 // 把可信的原始封面地址替换为当前 Edge Function 的代理地址。
 function withProxyCover(request: Request, isbn: string, book: BookPayload | null): BookPayload | null {
   if (!book?.cover_url || !isAllowedCoverUrl(book.cover_url)) return book;
-  const proxyUrl = new URL(request.url);
-  proxyUrl.search = "";
+  const projectUrl = Deno.env.get("SUPABASE_URL") || new URL(request.url).origin;
+  const proxyUrl = new URL(`/functions/v1/${COVER_PROXY_CONFIG.functionName}`, projectUrl);
   proxyUrl.searchParams.set("asset", "cover");
   proxyUrl.searchParams.set("isbn", isbn);
   return { ...book, cover_url: proxyUrl.href };

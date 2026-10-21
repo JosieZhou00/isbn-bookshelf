@@ -41,15 +41,13 @@ function isAllowedOrigin(request: Request): boolean {
   return !origin || getAllowedOrigins().has(origin);
 }
 
-// 按请求来源生成跨域响应头，避免任意网页直接消耗查询额度。
-function getCorsHeaders(request: Request): Record<string, string> {
-  const origin = request.headers.get("origin");
+// 返回 Supabase 官方建议的浏览器跨域响应头；来源限制仍由请求入口单独执行。
+function getCorsHeaders(): Record<string, string> {
   return {
-    "Access-Control-Allow-Origin": origin && getAllowedOrigins().has(origin) ? origin : DEFAULT_ALLOWED_ORIGINS[0],
+    "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
     "Access-Control-Allow-Methods": "GET, OPTIONS",
     "Access-Control-Max-Age": "86400",
-    "Vary": "Origin",
   };
 }
 
@@ -75,7 +73,7 @@ function isValidIsbn(value: string): boolean {
 function json(request: Request, body: unknown, status = 200, extraHeaders: Record<string, string> = {}): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...getCorsHeaders(request), ...extraHeaders, "Content-Type": "application/json; charset=utf-8" },
+    headers: { ...getCorsHeaders(), ...extraHeaders, "Content-Type": "application/json; charset=utf-8" },
   });
 }
 
@@ -218,7 +216,7 @@ async function serveCover(request: Request, isbn: string): Promise<Response> {
   try {
     const image = await fetchCoverImage(coverUrl);
     const headers = new Headers(image.headers);
-    Object.entries(getCorsHeaders(request)).forEach(([name, value]) => headers.set(name, value));
+    Object.entries(getCorsHeaders()).forEach(([name, value]) => headers.set(name, value));
     return new Response(image.body, { status: image.status, headers });
   } catch (error) {
     console.warn("封面代理读取失败", error);
@@ -447,7 +445,7 @@ async function lookupBook(isbn: string): Promise<{ source: string; book: BookPay
 // 处理跨域预检和 ISBN 查询请求。
 Deno.serve(async (request) => {
   if (!isAllowedOrigin(request)) return json(request, { found: false, message: "该网页来源无权调用查书服务" }, 403);
-  if (request.method === "OPTIONS") return new Response("ok", { headers: getCorsHeaders(request) });
+  if (request.method === "OPTIONS") return new Response("ok", { headers: getCorsHeaders() });
   if (request.method !== "GET") return json(request, { found: false, message: "仅支持 GET 请求" }, 405);
   const requestUrl = new URL(request.url);
   const isbn = normalizeIsbn(requestUrl.searchParams.get("isbn"));
@@ -465,7 +463,7 @@ Deno.serve(async (request) => {
     const cached = await readLookupCache(isbn);
     if (cached) {
       return json(request, { found: cached.found, source: cached.source, book: withProxyCover(request, isbn, cached.book) || { isbn }, cached: true }, 200, {
-        "Cache-Control": "public, max-age=300, s-maxage=3600",
+        "Cache-Control": "no-store",
       });
     }
   } catch (error) {
@@ -481,6 +479,6 @@ Deno.serve(async (request) => {
     console.warn("ISBN 查询结果未能写入缓存", error);
   }
   return json(request, { found: cacheValue.found, source: cacheValue.source, book: withProxyCover(request, isbn, cacheValue.book), cached: false }, 200, {
-    "Cache-Control": "public, max-age=300, s-maxage=3600",
+    "Cache-Control": "no-store",
   });
 });

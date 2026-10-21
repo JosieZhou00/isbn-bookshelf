@@ -26,13 +26,13 @@ export function getLookupBackendConfig() {
 async function lookupByBackend(isbn, accessToken = "") {
   const backend = getLookupBackendConfig();
   if (!backend.url || !backend.key) return null;
-  const params = new URLSearchParams({ isbn, client: "web-cover-proxy-v2" });
+  const params = new URLSearchParams({ isbn, client: "web-cover-proxy-v3" });
   const endpoint = `${backend.url.replace(/\/$/, "")}/functions/v1/${encodeURIComponent(backend.functionName)}?${params}`;
   const headers = { apikey: backend.key };
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
   else if (/^eyJ[^.]+\.[^.]+\.[^.]+$/.test(backend.key)) headers.Authorization = `Bearer ${backend.key}`;
   // 聚合后端可能在主来源失败后并行查询后备来源，给予比单一公开接口更长的等待时间。
-  const response = await fetchWithTimeout(endpoint, { headers }, 18000);
+  const response = await fetchWithTimeout(endpoint, { headers, mode: "cors", cache: "no-store" }, 18000);
   if (!response.ok) throw new Error(`云端查书返回 ${response.status}`);
   const result = await response.json();
   if (!result.found || normalizeIsbn(result.book?.isbn) !== isbn) return null;

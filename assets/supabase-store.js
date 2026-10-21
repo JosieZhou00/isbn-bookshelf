@@ -1,6 +1,6 @@
-// 本文件封装 Supabase 邮箱验证码登录和个人书架的数据访问。
-import { CONFIG, normalizeBook, normalizeStatus } from "./utils.js?v=11";
-import { t } from "./i18n.js?v=11";
+// 本文件封装 Supabase 邮箱登录链接和个人书架的数据访问。
+import { CONFIG, normalizeBook, normalizeStatus } from "./utils.js?v=13";
+import { t } from "./i18n.js?v=13";
 
 const AUTH_STORAGE_KEY = "isbn-bookshelf-auth";
 const SUPABASE_MODULE_URLS = [
@@ -46,20 +46,12 @@ export class SupabaseStore {
     return { needsAuth: !this.session };
   }
 
-  // 向邮箱发送一次性验证码，首次使用时允许自动创建账号。
+  // 向邮箱发送一次性登录链接，首次使用时允许自动创建账号。
   async signIn(email) {
     const redirectTo = CONFIG.appUrl || `${location.origin}${location.pathname}`;
     const { error } = await this.client.auth.signInWithOtp({ email, options: { emailRedirectTo: redirectTo, shouldCreateUser: true } });
     if (error) throw new Error(/rate limit/i.test(error.message || "") ? t("error.rateLimit") : error.message);
     return true;
-  }
-
-  // 校验用户输入的邮箱验证码并建立会话。
-  async verifyOtp(email, token) {
-    const { data, error } = await this.client.auth.verifyOtp({ email, token, type: "email" });
-    if (error) throw error;
-    this.session = data.session;
-    return this.session;
   }
 
   // 退出云端账号并清除本项目的本地会话。

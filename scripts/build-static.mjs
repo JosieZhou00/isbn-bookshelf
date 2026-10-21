@@ -1,4 +1,4 @@
-// 本文件生成 GitHub Pages 使用的纯静态 dist 目录，并写入不含密钥的公开配置。
+// 本文件生成 GitHub Pages 使用的纯静态 dist 目录，并写入只包含 publishable key 的公开配置。
 import { cpSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -35,6 +35,17 @@ const files = [
 ];
 
 files.forEach(copyFile);
-writeFileSync(resolve(outputRoot, "assets/config.js"), "// GitHub Pages 公开配置：默认使用免注册本机书架。\nwindow.ISBN_BOOKSHELF_CONFIG = {};\n");
+const publicConfig = {
+  supabaseUrl: process.env.SUPABASE_URL || "",
+  supabasePublishableKey: process.env.SUPABASE_PUBLISHABLE_KEY || "",
+  lookupSupabaseUrl: process.env.LOOKUP_SUPABASE_URL || process.env.SUPABASE_URL || "",
+  lookupSupabasePublishableKey: process.env.LOOKUP_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || "",
+  lookupFunctionName: process.env.LOOKUP_FUNCTION_NAME || "isbn-bookshelf-lookup",
+  appUrl: process.env.APP_URL || "https://josiezhou00.github.io/isbn-bookshelf/"
+};
+writeFileSync(
+  resolve(outputRoot, "assets/config.js"),
+  `// GitHub Pages 公开配置：只允许写入 Supabase publishable key。\nwindow.ISBN_BOOKSHELF_CONFIG = ${JSON.stringify(publicConfig, null, 2)};\n`
+);
 writeFileSync(resolve(outputRoot, ".nojekyll"), "");
 console.log(`已生成 GitHub Pages 文件：${outputRoot}`);

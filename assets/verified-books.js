@@ -1,5 +1,5 @@
 // 本文件保存经出版社等权威页面核对的 ISBN 纠错记录，供查书流程优先使用。
-import { normalizeBook, normalizeIsbn } from "./utils.js?v=11";
+import { normalizeBook, normalizeIsbn } from "./utils.js?v=13";
 
 const VERIFIED_BOOKS = {
   "9787522206042": {

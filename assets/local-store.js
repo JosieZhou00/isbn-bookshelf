@@ -1,6 +1,6 @@
 // 本文件实现免注册书架，全部数据只写入当前浏览器的 localStorage。
-import { normalizeBook, normalizeStatus } from "./utils.js?v=11";
-import { t } from "./i18n.js?v=11";
+import { normalizeBook, normalizeStatus } from "./utils.js?v=13";
+import { t } from "./i18n.js?v=13";
 
 const STORAGE_KEY = "isbn-bookshelf-local-v1";
 

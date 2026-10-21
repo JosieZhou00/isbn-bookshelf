@@ -32,6 +32,13 @@ jobs:
         run: npm run check
       - name: 生成静态网站
         run: npm run build
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+          LOOKUP_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          LOOKUP_SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+          LOOKUP_FUNCTION_NAME: isbn-bookshelf-lookup
+          APP_URL: https://josiezhou00.github.io/isbn-bookshelf/
       - name: 配置 Pages
         uses: actions/configure-pages@v5
       - name: 上传网站文件

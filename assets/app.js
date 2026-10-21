@@ -1,13 +1,13 @@
 // 本文件协调扫码、查书、登录、存储、书架筛选、阅读看板和导出交互。
-import { lookupBookByIsbn } from "./book-lookup.js?v=11";
-import { exportBooks } from "./csv-export.js?v=11";
-import { DemoStore } from "./demo-store.js?v=11";
-import { applyTranslations, sourceLabel, t, toggleLanguage } from "./i18n.js?v=11";
-import { LocalStore } from "./local-store.js?v=11";
-import { CameraScanner } from "./scanner.js?v=11";
-import { SupabaseStore } from "./supabase-store.js?v=11";
-import { fillBookForm, renderBoard, renderCoverPreview, renderShelf, renderTagFilters } from "./ui.js?v=11";
-import { hasCloudConfig, isValidIsbn, normalizeBook, normalizeIsbn, normalizeTags } from "./utils.js?v=11";
+import { lookupBookByIsbn } from "./book-lookup.js?v=13";
+import { exportBooks } from "./csv-export.js?v=13";
+import { DemoStore } from "./demo-store.js?v=13";
+import { applyTranslations, sourceLabel, t, toggleLanguage } from "./i18n.js?v=13";
+import { LocalStore } from "./local-store.js?v=13";
+import { CameraScanner } from "./scanner.js?v=13";
+import { SupabaseStore } from "./supabase-store.js?v=13";
+import { fillBookForm, renderBoard, renderCoverPreview, renderShelf, renderTagFilters } from "./ui.js?v=13";
+import { hasCloudConfig, isValidIsbn, normalizeBook, normalizeIsbn, normalizeTags } from "./utils.js?v=13";
 
 const $ = (selector) => document.querySelector(selector);
 const elements = {
@@ -20,7 +20,7 @@ const elements = {
   readingBoard: $("#readingBoard"), boardTagFilter: $("#boardTagFilter"), exportButton: $("#exportButton"), storageNote: $("#storageNote"),
   scannerDialog: $("#scannerDialog"), scannerVideo: $("#scannerVideo"), scannerHint: $("#scannerHint"), closeScannerButton: $("#closeScannerButton"),
   authDialog: $("#authDialog"), signedOutPanel: $("#signedOutPanel"), signedInPanel: $("#signedInPanel"),
-  loginForm: $("#loginForm"), loginEmail: $("#loginEmail"), codeField: $("#codeField"), loginCode: $("#loginCode"), loginButton: $("#loginButton"), authHint: $("#authHint"), accountEmail: $("#accountEmail"), signOutButton: $("#signOutButton"),
+  loginForm: $("#loginForm"), loginEmail: $("#loginEmail"), loginButton: $("#loginButton"), authHint: $("#authHint"), accountEmail: $("#accountEmail"), signOutButton: $("#signOutButton"),
   editDialog: $("#editDialog"), editForm: $("#editForm"), closeEditButton: $("#closeEditButton"), deleteBookButton: $("#deleteBookButton"),
   editId: $("#editId"), editTitle: $("#editTitle"), editAuthors: $("#editAuthors"), editTags: $("#editTags"), editStatus: $("#editStatus"), editNotes: $("#editNotes"), toast: $("#toast")
 };
@@ -31,7 +31,7 @@ const bookFields = {
 };
 
 const demoMode = new URLSearchParams(location.search).get("demo") === "1";
-const state = { books: [], store: new LocalStore(), localStore: null, cloudStore: null, demoStore: null, lookupBook: null, lookupStatus: "idle", toastTimer: null };
+const state = { books: [], store: new LocalStore(), localStore: null, cloudStore: null, demoStore: null, lookupBook: null, lookupStatus: "idle", authLinkSent: false, toastTimer: null };
 state.localStore = state.store;
 
 const scanner = new CameraScanner({
@@ -102,9 +102,8 @@ function renderAccountState() {
   elements.signedInPanel.classList.toggle("hidden", !session);
   elements.accountEmail.textContent = session ? t("auth.current", { email: session.user.email }) : "";
   elements.storageNote.textContent = demo ? t("storage.demo") : cloud ? t("storage.cloud") : t("storage.local");
-  const waitingForCode = !elements.codeField.classList.contains("hidden");
-  elements.loginButton.textContent = waitingForCode ? t("auth.verify") : t("auth.send");
-  elements.authHint.textContent = waitingForCode ? t("auth.sent") : t("auth.hint");
+  elements.loginButton.textContent = state.authLinkSent ? t("auth.resend") : t("auth.send");
+  elements.authHint.textContent = state.authLinkSent ? t("auth.sent") : t("auth.hint");
 }
 
 // 根据当前查询阶段刷新可切换语言的提示文字。
@@ -219,27 +218,16 @@ async function handleDeleteBook() {
   toast(t("toast.deleted"));
 }
 
-// 发送或验证邮箱验证码。
+// 向邮箱发送登录链接；用户点击邮件链接后由 Supabase 自动恢复会话。
 async function handleLogin(event) {
   event.preventDefault();
   if (!state.cloudStore) throw new Error(t("error.cloudNotConfigured"));
   const email = elements.loginEmail.value.trim();
-  const waitingForCode = !elements.codeField.classList.contains("hidden");
   elements.loginButton.disabled = true;
   try {
-    if (!waitingForCode) {
-      await state.cloudStore.signIn(email);
-      elements.codeField.classList.remove("hidden");
-      elements.loginCode.required = true;
-      elements.loginButton.textContent = t("auth.verify");
-      elements.authHint.textContent = t("auth.sent");
-      elements.loginCode.focus();
-      return;
-    }
-    await state.cloudStore.verifyOtp(email, elements.loginCode.value.trim());
-    await switchStore(state.cloudStore);
-    elements.authDialog.close();
-    toast(t("toast.signedIn"));
+    await state.cloudStore.signIn(email);
+    state.authLinkSent = true;
+    renderAccountState();
   } finally {
     elements.loginButton.disabled = false;
   }

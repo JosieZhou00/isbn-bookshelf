@@ -1,6 +1,6 @@
 // 本文件封装手机相机扫码，优先使用 BarcodeDetector，并以固定版本 ZXing 兜底。
-import { isValidIsbn, normalizeIsbn } from "./utils.js?v=11";
-import { t } from "./i18n.js?v=11";
+import { isValidIsbn, normalizeIsbn } from "./utils.js?v=13";
+import { t } from "./i18n.js?v=13";
 
 const ZXING_MODULE_URL = "https://esm.sh/@zxing/browser@0.1.5";
 

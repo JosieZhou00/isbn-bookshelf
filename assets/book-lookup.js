@@ -1,6 +1,6 @@
 // 本文件封装 ISBN 查书，优先使用配置的 Supabase 函数，再尝试公开图书接口。
-import { CONFIG, normalizeBook, normalizeIsbn } from "./utils.js?v=11";
-import { getVerifiedBookByIsbn } from "./verified-books.js?v=11";
+import { CONFIG, normalizeBook, normalizeIsbn } from "./utils.js?v=13";
+import { getVerifiedBookByIsbn } from "./verified-books.js?v=13";
 
 // 为外部请求设置超时，避免移动网络下长时间停留在加载状态。
 async function fetchWithTimeout(url, options = {}, timeoutMs = 7000) {
@@ -30,7 +30,8 @@ async function lookupByBackend(isbn, accessToken = "") {
   const headers = { apikey: backend.key };
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
   else if (/^eyJ[^.]+\.[^.]+\.[^.]+$/.test(backend.key)) headers.Authorization = `Bearer ${backend.key}`;
-  const response = await fetchWithTimeout(endpoint, { headers });
+  // 聚合后端可能在主来源失败后并行查询后备来源，给予比单一公开接口更长的等待时间。
+  const response = await fetchWithTimeout(endpoint, { headers }, 18000);
   if (!response.ok) throw new Error(`云端查书返回 ${response.status}`);
   const result = await response.json();
   if (!result.found || normalizeIsbn(result.book?.isbn) !== isbn) return null;

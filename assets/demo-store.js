@@ -1,6 +1,6 @@
 // 本文件提供只在内存中运行的公开演示书架，不读取或写入访客的本机数据。
-import { normalizeBook, normalizeStatus } from "./utils.js?v=11";
-import { t } from "./i18n.js?v=11";
+import { normalizeBook, normalizeStatus } from "./utils.js?v=13";
+import { t } from "./i18n.js?v=13";
 
 const DEMO_BOOKS = [
   {

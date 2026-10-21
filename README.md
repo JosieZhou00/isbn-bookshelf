@@ -30,7 +30,7 @@ The demo supports sorting, status changes, the reading board, editing, and CSV e
 - Query NeoDB's Chinese catalog, Google Books, and Open Library in sequence, accepting only exact ISBN matches.
 - Keep the ISBN and open the manual form when no exact result is available instead of substituting a similar ISBN.
 - Use a local bookshelf without registration; data stays in the current browser.
-- Optionally sign in with an email verification code through Supabase to sync across devices.
+- Optionally sign in with a Supabase email link to sync across devices.
 - Add tags, filter by tag, and sort by added date or title.
 - Manage reading progress on a Want to Read → Reading → Read board.
 - Export UTF-8 BOM CSV files that open in Excel, Numbers, and other spreadsheet apps.
@@ -86,8 +86,8 @@ For a first deployment, set the repository's **Settings → Pages → Source** t
 
 1. Create a Supabase project.
 2. Apply the migration with `supabase db push`.
-3. Enable email sign-in and configure the email template to show `{{ .Token }}`.
-4. For better Chinese-book coverage, deploy the `isbn-bookshelf-lookup` Edge Function and configure a domestic ISBN API on the server.
+3. Enable email sign-in and add the production site to the allowed redirect URLs. The Free Plan uses Supabase's default email sign-in link.
+4. Deploy the `isbn-bookshelf-lookup` Edge Function so mobile browsers can use the aggregated Chinese-book lookup; the function includes caching, origin checks, and rate limiting.
 5. Add the public values to `.env`, then run `npm run build:config`.
 
 See the [Chinese deployment guide](docs/部署说明.md) for the full setup. Third-party API keys belong in Edge Function secrets and must not be committed or exposed in frontend code.
@@ -119,7 +119,7 @@ tests/                   Core logic tests
 - ISBN lookup sends the ISBN to the selected catalog services, but not local books, tags, or notes.
 - Demo data contains no private notes and does not read a visitor's personal shelf.
 - The cloud table is restricted to the `authenticated` role and enforces `auth.uid() = user_id`.
-- `.env`, `assets/config.js`, `dist/`, and Supabase temporary directories are excluded from the repository.
+- `.env`, `assets/config.js`, `dist/`, and Supabase temporary directories are excluded from the repository; the frontend receives only the Supabase publishable key.
 
 See the [Chinese privacy notice](docs/隐私说明.md) for more detail.
 

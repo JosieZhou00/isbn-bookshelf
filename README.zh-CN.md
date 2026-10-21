@@ -32,7 +32,7 @@
 - 依次查询 NeoDB 中文书目、Google Books 和 Open Library，只接受 ISBN 完全一致的记录。
 - 未检索到书目时保留 ISBN 并打开手动填写表单，不使用相似 ISBN 代替。
 - 无需注册即可使用本机书架，数据保存在当前浏览器。
-- 可选 Supabase 邮箱验证码登录，实现不同设备同步。
+- 可选 Supabase 邮箱登录链接，实现不同设备同步。
 - 添加标签，按标签筛选，并按添加时间或书名排序。
 - 使用“想读—在读—已读”看板管理阅读状态。
 - 导出带 UTF-8 BOM 的 CSV，可使用 Excel 或 Numbers 打开。
@@ -45,7 +45,7 @@
 | --- | --- | --- | --- |
 | 本机书架 | 否 | 当前浏览器 `localStorage` | 默认个人使用 |
 | 演示书架 | 否 | 当前页面内存 | 公开展示，不影响个人数据 |
-| 云端书架 | 邮箱验证码 | 自己的 Supabase 项目 | 跨设备同步 |
+| 云端书架 | 邮箱登录链接 | 自己的 Supabase 项目 | 跨设备同步 |
 
 三种模式互不自动迁移。使用本机书架时，请定期导出 CSV；清除浏览器网站数据会同时删除本机书架。
 
@@ -88,8 +88,8 @@ npm run build
 
 1. 新建 Supabase 项目。
 2. 使用 `supabase db push` 应用迁移。
-3. 启用邮箱登录，并将邮件模板配置为显示 `{{ .Token }}`。
-4. 如需提高中文书目命中率，部署 `isbn-bookshelf-lookup` Edge Function，并在服务端配置国内 ISBN API。
+3. 启用邮箱登录，并将正式站点加入允许的回调地址。免费版使用 Supabase 默认邮件登录链接。
+4. 部署 `isbn-bookshelf-lookup` Edge Function，让手机通过聚合后端查询中文书目；函数包含缓存、来源限制和频率保护。
 5. 将公开配置写入 `.env`，执行 `npm run build:config`。
 
 完整步骤见 [部署说明](docs/部署说明.md)。第三方接口密钥只能存放在 Edge Function secrets 中，不应写入前端或提交到 GitHub。
@@ -121,7 +121,7 @@ tests/                   核心逻辑测试
 - 查询 ISBN 时会向相应书目服务发送 ISBN，不会发送本机书架、标签或备注。
 - 演示数据不含用户备注，也不会读取访客的个人书架。
 - 云端表只向 `authenticated` 角色开放，并校验 `auth.uid() = user_id`。
-- `.env`、`assets/config.js`、`dist/` 和 Supabase 临时目录均不提交到仓库。
+- `.env`、`assets/config.js`、`dist/` 和 Supabase 临时目录均不提交到仓库；网页只接收 Supabase publishable key。
 
 更多说明见 [隐私说明](docs/隐私说明.md)。
 

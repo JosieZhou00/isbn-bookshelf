@@ -1,7 +1,7 @@
 -- 本迁移创建个人书架表，并以 RLS 将每条记录限制给所属邮箱账号。
 create table if not exists public.books (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid not null default (select auth.uid()) references auth.users(id) on delete cascade,
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
   isbn text not null,
   title text not null,
   authors text[] not null default '{}',
@@ -27,6 +27,12 @@ alter table public.books enable row level security;
 
 revoke all on table public.books from anon, authenticated;
 grant select, insert, update, delete on table public.books to authenticated;
+
+-- 允许首次通过 Dashboard 手动部署、随后再由 CLI 接管迁移记录时安全重放本文件。
+drop policy if exists "用户可读取自己的书架" on public.books;
+drop policy if exists "用户可添加自己的图书" on public.books;
+drop policy if exists "用户可修改自己的图书" on public.books;
+drop policy if exists "用户可删除自己的图书" on public.books;
 
 create policy "用户可读取自己的书架"
 on public.books for select

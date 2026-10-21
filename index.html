@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="./assets/styles.css" />
     <script>document.documentElement.classList.toggle("file-mode", location.protocol === "file:");</script>
     <script src="./assets/config.js"></script>
-    <script type="module" src="./assets/app.js?v=11"></script>
+    <script type="module" src="./assets/app.js?v=13"></script>
   </head>
   <body>
     <aside class="file-warning" role="alert">
@@ -142,11 +142,10 @@
     <dialog id="authDialog" class="auth-dialog">
       <form method="dialog" class="dialog-heading"><strong data-i18n="auth.title">Email cloud shelf</strong><button type="submit" aria-label="Close" data-i18n-aria-label="common.close">×</button></form>
       <div id="signedOutPanel">
-        <p data-i18n="auth.description">Enter your email to receive a six-digit code. Your account is created automatically the first time.</p>
+        <p data-i18n="auth.description">Enter your email to receive a sign-in link. Your account is created automatically the first time.</p>
         <form id="loginForm" class="auth-form">
           <label><span data-i18n="auth.email">Email</span><input id="loginEmail" type="email" autocomplete="email" required /></label>
-          <label class="hidden" id="codeField"><span data-i18n="auth.code">Verification code</span><input id="loginCode" inputmode="numeric" autocomplete="one-time-code" /></label>
-          <button class="primary-button" id="loginButton" type="submit" data-i18n="auth.send">Send code</button>
+          <button class="primary-button" id="loginButton" type="submit" data-i18n="auth.send">Send sign-in link</button>
         </form>
         <p class="hint" id="authHint">Signing in opens your cloud shelf. Local books are not uploaded automatically.</p>
       </div>
